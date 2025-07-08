@@ -22,6 +22,44 @@
             min-width: 0;
             color: #000 !important;
         }
+
+         /* Làm đẹp phần "Danh sách Sheet đã được tạo bảng" */
+        .card-header {
+        background-color: #f8f9fa;
+        font-weight: 600;
+        font-size: 16px;
+        color: #333;
+        border-bottom: 1px solid #ddd;
+        }
+
+        .card-body h6 {
+            font-weight: 600;
+            color: #0d6efd;
+            margin-top: 12px;
+            margin-bottom: 5px;
+        }
+
+        .table {
+            font-size: 14px;
+            margin-bottom: 0;
+        }
+
+        .table th {
+            background-color: #eaeaea;
+            text-align: center;
+            font-size: 13px;
+        }
+
+        .table td {
+            font-size: 13px;
+            vertical-align: middle;
+        }
+
+        .table-bordered {
+            border: 1px solid #dee2e6;
+            border-radius: 6px;
+            overflow: hidden;
+        }
     </style>
 </head>
 <body>
@@ -102,6 +140,8 @@
                 </div>
             </div>
 
+            
+
             <!-- Danh sách Doc -->
             <div class="col-md-6">
                 <div class="card mb-4">
@@ -154,6 +194,42 @@
                 </div>
             </div>
         </div>
+
+            <!--Danh sách Sheet đã được tạo bảng -->
+            <div class="row">
+    <div class="col-md-6">
+        <div class="card mb-4">
+            <div class="card-header">Danh sách Sheet đã được tạo bảng</div>
+            <div class="card-body">
+                @if ($excelFilesWithCreatedSheets->isNotEmpty())
+                    @foreach ($excelFilesWithCreatedSheets as $excelFile)
+                        <h6>File: {{ $excelFile->name }}</h6>
+                        <table class="table table-bordered">
+                            <thead>
+                                <tr>
+                                    <th>Sheet Name</th>
+                                    <th>Table Name</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach ($excelFile->sheets as $sheet)
+                                    <tr>
+                                        <td>{{ $sheet->name }}</td>
+                                        <td>{{ $sheet->table_name }}</td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    @endforeach
+                @else
+                    <p>Chưa có sheet nào được tạo bảng.</p>
+                @endif
+            </div>
+        </div>
+    </div>
+
+    
+
 
         <!-- Modal cho nội dung Word -->
         <div class="modal fade" id="docModal" tabindex="-1" aria-labelledby="docModalLabel" aria-hidden="true">

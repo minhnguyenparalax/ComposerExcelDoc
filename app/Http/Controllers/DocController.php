@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Http\Controllers;
 
 use App\Models\Docfile;
@@ -89,7 +88,7 @@ class DocController extends Controller
                             $style = '';
                             if ($fontStyle) {
                                 // Lấy kích thước phông chữ (half-points, chia 2 để ra points gần đúng với px)
-                                $fontSize = method_exists($fontStyle, 'getSize') && $fontStyle->getSize() ? ($fontStyle->getSize() * 0.75) : 11;;
+                                $fontSize = method_exists($fontStyle, 'getSize') && $fontStyle->getSize() ? ($fontStyle->getSize() * 2) : 11;;
                                 $style .= "font-size: {$fontSize}px; color: #000;";
                                 if ($fontStyle->isBold()) {
                                     $style .= 'font-weight: bold;';
@@ -125,7 +124,7 @@ class DocController extends Controller
                                             $style = '';
                                             if ($fontStyle) {
                                                 $fontSize = method_exists($fontStyle, 'getSize') && $fontStyle->getSize() ? ($fontStyle->getSize() / 2) : 11;
-                                                $style .= "font-size: {$fontSize}px; color: #000;";
+                                                $style .= "font-size: {$fontSize} 100px; color: #000;";
                                                 if ($fontStyle->isBold()) {
                                                     $style .= 'font-weight: bold;';
                                                 }
