@@ -92,7 +92,7 @@ class ExcelController extends Controller
         return redirect()->route('file.index')->with('success', 'Đã xoá file Excel và các bảng liên quan.');
     }
 
-    public function readSheet($fileId, $sheetId)
+    public function readSheet($fileId, $sheetId, $action = 'view')
     {
         $excelFile = Excelfiles::findOrFail($fileId);
         $sheet = ExcelSheets::where('excelfile_id', $fileId)->findOrFail($sheetId);
@@ -213,49 +213,6 @@ class ExcelController extends Controller
                 $filteredData[] = $filteredRow;
             }
 
-            // Tạo bảng động và chèn dữ liệu
-            $tableName = $sheet->table_name;
-            if (!Schema::hasTable($tableName)) {
-                Schema::create($tableName, function (Blueprint $table) use ($filteredData) {
-                    $table->id();
-                    $usedColumns = [];
-
-                    $headers = array_map('trim', array_column($filteredData[0], 'value'));
-                    $totalColumns = count($headers);
-
-                    // Tạo cột dựa trên header, giữ cột rỗng với giá trị mặc định
-                    for ($index = 0; $index < $totalColumns; $index++) {
-                        $field = $headers[$index];
-                        $baseName = !empty($field) ? Str::slug($field, '_') : 'null_' . $index;
-                        $columnName = $baseName;
-                        $suffix = 2;
-
-                        while (in_array($columnName, $usedColumns)) {
-                            $columnName = $baseName . '_' . $suffix++;
-                        }
-
-                        $usedColumns[] = $columnName;
-                        $table->text($columnName)->nullable()->default(!empty($field) ? null : '-');
-                    }
-
-                    $table->timestamps();
-                });
-            }
-
-            // Chèn dữ liệu vào bảng động
-            $insertedCount = 0;
-            foreach (array_slice($filteredData, 1) as $row) { // Bỏ header, bắt đầu từ hàng 2
-                $rowData = ['created_at' => now(), 'updated_at' => now()];
-                foreach ($nonEmptyColumns as $index => $col) {
-                    $value = $row[$index]['value'] ?? null;
-                    $header = trim($filteredData[0][$index]['value']);
-                    $columnName = !empty($header) ? Str::slug($header, '_') : 'null_' . $col;
-                    $rowData[$columnName] = is_null($value) || $value === '' ? '-' : (string)$value;
-                }
-                DB::table($tableName)->insert($rowData);
-                $insertedCount++;
-            }
-
             // Cập nhật statusColumnIndex
             if ($statusColumnIndex !== null) {
                 $statusColumnIndex = array_search($statusColumnIndex, $nonEmptyColumns);
@@ -268,11 +225,58 @@ class ExcelController extends Controller
             $headers = array_map(fn($cell) => $cell['value'], $filteredData[0]);
             Log::debug("Tiêu đề sheet sau lọc: fileId={$fileId}, sheetId={$sheetId}, headers=" . json_encode($headers));
 
-            // Lưu vào session (tạm thời, theo yêu cầu)
+            // Lưu vào session
             $sheetData = session('sheet_data', []);
             $sheetData[$fileId][$sheetId] = $filteredData;
             session(['sheet_data' => $sheetData]);
 
+            // Xử lý logic tạo bảng và chèn dữ liệu nếu action là 'select'
+            if ($action === 'select') {
+                $tableName = $sheet->table_name;
+                if (!Schema::hasTable($tableName)) {
+                    Schema::create($tableName, function (Blueprint $table) use ($filteredData) {
+                        $table->id();
+                        $usedColumns = [];
+
+                        $headers = array_map('trim', array_column($filteredData[0], 'value'));
+                        $totalColumns = count($headers);
+
+                        for ($index = 0; $index < $totalColumns; $index++) {
+                            $field = $headers[$index];
+                            $baseName = !empty($field) ? Str::slug($field, '_') : 'null_' . $index;
+                            $columnName = $baseName;
+                            $suffix = 2;
+
+                            while (in_array($columnName, $usedColumns)) {
+                                $columnName = $baseName . '_' . $suffix++;
+                            }
+
+                            $usedColumns[] = $columnName;
+                            $table->text($columnName)->nullable()->default(!empty($field) ? null : '-');
+                        }
+
+                        $table->timestamps();
+                    });
+                }
+
+                // Chèn dữ liệu vào bảng động
+                $insertedCount = 0;
+                foreach (array_slice($filteredData, 1) as $row) {
+                    $rowData = ['created_at' => now(), 'updated_at' => now()];
+                    foreach ($nonEmptyColumns as $index => $col) {
+                        $value = $row[$index]['value'] ?? null;
+                        $header = trim($filteredData[0][$index]['value']);
+                        $columnName = !empty($header) ? Str::slug($header, '_') : 'null_' . $col;
+                        $rowData[$columnName] = is_null($value) || $value === '' ? '-' : (string)$value;
+                    }
+                    DB::table($tableName)->insert($rowData);
+                    $insertedCount++;
+                }
+
+                return redirect()->route('file.index')->with('success', "Đã tạo bảng {$sheet->table_name} (fileId: {$fileId}) và chèn $insertedCount dòng thành công.");
+            }
+
+            // Nếu action là 'view', chỉ trả về view để hiển thị dữ liệu
             return view('sheet_data', [
                 'excelFiles' => Excelfiles::with('sheets')->get(),
                 'docFiles' => \App\Models\Docfile::all(),
@@ -282,7 +286,7 @@ class ExcelController extends Controller
                 'currentSheetId' => $sheetId,
                 'sheetName' => $sheet->name,
                 'fileName' => $excelFile->name,
-                'success' => "Đã tạo bảng và chèn $insertedCount dòng vào sheet '" . $sheet->name . "' từ file '" . $excelFile->name . "' thành công."
+                'success' => "Đã đọc dữ liệu từ sheet '" . $sheet->name . "' của file '" . $excelFile->name . "' thành công."
             ]);
 
         } catch (\PhpOffice\PhpSpreadsheet\Reader\Exception $e) {

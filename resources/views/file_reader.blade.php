@@ -77,6 +77,9 @@
                                                         <a href="#" class="btn btn-sm btn-info view-sheet" data-file-id="{{ $file->id }}" data-sheet-id="{{ $sheet->id }}" data-sheet-name="{{ $sheet->name }}" data-bs-toggle="modal" data-bs-target="#excelModal">
                                                             Xem
                                                         </a>
+                                                        <a href="{{ route('excel.selectSheet', ['fileId' => $file->id, 'sheetId' => $sheet->id]) }}" class="btn btn-sm btn-success">
+                                                            Chọn
+                                                        </a>
                                                         <span>{{ $sheet->name }}</span>
                                                     </div>
                                                 @endforeach
@@ -192,6 +195,7 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script>
+        // Xử lý nút Xem cho Doc
         $(document).ready(function() {
             // Xử lý nút Xem cho Doc
             $('.view-doc').click(function(e) {
@@ -233,6 +237,11 @@
                     }
                 });
             });
+
+        
+            // Xử lý nút Chọn cho Sheet
+            
+
         });
     </script>
 </body>
