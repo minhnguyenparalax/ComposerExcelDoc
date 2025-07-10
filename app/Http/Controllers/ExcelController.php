@@ -11,14 +11,22 @@ use Illuminate\Support\Str;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
+use App\Models\Docfile;
 
 class ExcelController extends Controller
 {
     public function viewExcelFiles()
     {
         $excelFiles = Excelfiles::with('sheets')->get();
-        $docFiles = \App\Models\Docfile::all();
-        return view('file_reader', compact('excelFiles', 'docFiles'));
+        $docFiles = Docfile::all();
+        $selectedDocs = Docfile::where('is_selected', 1)->with('variables')->get(); // Thêm dòng này
+        $excelFilesWithCreatedSheets = Excelfiles::whereHas('sheets', function ($query) {
+            $query->where('is_table_created', true);
+        })->with(['sheets' => function ($query) {
+            $query->where('is_table_created', true);
+        }])->get();
+
+        return view('file_reader', compact('excelFiles', 'docFiles', 'selectedDocs', 'excelFilesWithCreatedSheets'));
     }
 
     public function addExcel(Request $request)
@@ -113,7 +121,6 @@ class ExcelController extends Controller
             $highestColumn = $worksheet->getHighestColumn();
             $highestColumnIndex = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::columnIndexFromString($highestColumn);
 
-            // Lấy thông tin merged cells
             $mergeCells = $worksheet->getMergeCells();
             $mergeInfo = [];
             foreach ($mergeCells as $mergeRange) {
@@ -129,7 +136,6 @@ class ExcelController extends Controller
             $data = [];
             $statusColumnIndex = null;
 
-            // Đọc tất cả ô từ sheet
             for ($row = 1; $row <= $highestRow; $row++) {
                 $rowData = [];
                 for ($col = 1; $col <= $highestColumnIndex; $col++) {
@@ -160,7 +166,6 @@ class ExcelController extends Controller
                 return redirect()->route('file.index')->with('error', 'Không tìm thấy dữ liệu trong sheet.');
             }
 
-            // Tìm hàng cuối cùng có giá trị
             $lastNonEmptyRowIndex = 0;
             foreach ($data as $rowIndex => $rowData) {
                 foreach ($rowData as $cell) {
@@ -170,7 +175,6 @@ class ExcelController extends Controller
                 }
             }
 
-            // Lọc bỏ cột trống
             $nonEmptyColumns = [];
             for ($col = 0; $col < $highestColumnIndex; $col++) {
                 $hasData = false;
@@ -200,7 +204,6 @@ class ExcelController extends Controller
                 }
             }
 
-            // Tạo dữ liệu đã lọc
             $filteredData = [];
             foreach ($data as $rowIndex => $rowData) {
                 if ($rowIndex > $lastNonEmptyRowIndex && $rowIndex !== 0) {
@@ -213,7 +216,6 @@ class ExcelController extends Controller
                 $filteredData[] = $filteredRow;
             }
 
-            // Cập nhật statusColumnIndex
             if ($statusColumnIndex !== null) {
                 $statusColumnIndex = array_search($statusColumnIndex, $nonEmptyColumns);
                 if ($statusColumnIndex === false) {
@@ -221,17 +223,18 @@ class ExcelController extends Controller
                 }
             }
 
-            // Debug log
             $headers = array_map(fn($cell) => $cell['value'], $filteredData[0]);
             Log::debug("Tiêu đề sheet sau lọc: fileId={$fileId}, sheetId={$sheetId}, headers=" . json_encode($headers));
 
-            // Lưu vào session
             $sheetData = session('sheet_data', []);
             $sheetData[$fileId][$sheetId] = $filteredData;
             session(['sheet_data' => $sheetData]);
 
-            // Xử lý logic tạo bảng và chèn dữ liệu nếu action là 'select'
             if ($action === 'select') {
+                if ($sheet->is_table_created || Schema::hasTable($sheet->table_name)) {
+                    return redirect()->route('file.index')->with('error', "Sheet {$sheet->name} đã có trong Database.");
+                }
+
                 $tableName = $sheet->table_name;
                 if (!Schema::hasTable($tableName)) {
                     Schema::create($tableName, function (Blueprint $table) use ($filteredData) {
@@ -259,7 +262,6 @@ class ExcelController extends Controller
                     });
                 }
 
-                // Chèn dữ liệu vào bảng động
                 $insertedCount = 0;
                 foreach (array_slice($filteredData, 1) as $row) {
                     $rowData = ['created_at' => now(), 'updated_at' => now()];
@@ -273,10 +275,11 @@ class ExcelController extends Controller
                     $insertedCount++;
                 }
 
+                $sheet->update(['is_table_created' => true]);
+
                 return redirect()->route('file.index')->with('success', "Đã tạo bảng {$sheet->table_name} (fileId: {$fileId}) và chèn $insertedCount dòng thành công.");
             }
 
-            // Nếu action là 'view', chỉ trả về view để hiển thị dữ liệu
             return view('sheet_data', [
                 'excelFiles' => Excelfiles::with('sheets')->get(),
                 'docFiles' => \App\Models\Docfile::all(),

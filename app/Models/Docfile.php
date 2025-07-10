@@ -12,9 +12,16 @@ class Docfile extends Model
     protected $table = 'docfile';
 
     protected $fillable = [
-        'path',
-        'name',
-        'content',
-        'primary_key',
+    'path',
+    'name',
+    'content',
+    'primary_key',
+    'table_name',
+    'is_selected',
     ];
+
+    public function variables()
+    {
+        return $this->hasMany(DocVariable::class, 'docfile_id');
+    }
 }

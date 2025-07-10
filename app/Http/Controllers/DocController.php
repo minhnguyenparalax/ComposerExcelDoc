@@ -1,7 +1,10 @@
 <?php
+
 namespace App\Http\Controllers;
 
 use App\Models\Docfile;
+use App\Models\DocVariable;
+use App\Models\Excelfiles;
 use Illuminate\Http\Request;
 use PhpOffice\PhpWord\IOFactory;
 use PhpOffice\PhpWord\Element\TextRun;
@@ -9,9 +12,30 @@ use PhpOffice\PhpWord\Element\Table;
 use PhpOffice\PhpWord\Element\ListItem;
 use PhpOffice\PhpWord\Style\Paragraph;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Str;
+use Voku\Helper\ASCII;
 
 class DocController extends Controller
 {
+    /**
+     * Hiển thị trang chính với danh sách tài liệu và biến đã chọn.
+     */
+    public function index()
+    {
+        $docFiles = Docfile::all();
+        $selectedDocs = Docfile::where('is_selected', 1)->with('variables')->get();
+        $excelFiles = Excelfiles::with('sheets')->get();
+        $excelFilesWithCreatedSheets = Excelfiles::whereHas('sheets', function ($query) {
+            $query->where('is_table_created', true);
+        })->with(['sheets' => function ($query) {
+            $query->where('is_table_created', true);
+        }])->get();
+
+        return view('file_reader', compact('docFiles', 'selectedDocs', 'excelFiles', 'excelFilesWithCreatedSheets'));
+    }
+
     /**
      * Thêm file Doc mới.
      */
@@ -41,12 +65,13 @@ class DocController extends Controller
                 return response()->json(['error' => 'File Word với đường dẫn này đã tồn tại trong hệ thống.'], 400);
             }
 
-            $content = $this->extractWordContent($phpWord); // Trích xuất nội dung
+            $content = $this->extractWordContent($phpWord);
 
             $docfile = Docfile::create([
                 'name' => $fileName,
                 'path' => $filePath,
-                'content' => $content, // Lưu nội dung vào cột content
+                'content' => $content,
+                'is_selected' => 0,
             ]);
 
             return redirect()->route('file.index')->with('success', 'Đã thêm file Word: ' . $fileName);
@@ -60,13 +85,151 @@ class DocController extends Controller
     }
 
     /**
+     * Xóa file Doc và bảng động tương ứng.
+     */
+    public function removeDoc(Request $request)
+    {
+        $request->validate([
+            'doc_id' => 'required|integer|exists:docfile,id',
+        ]);
+
+        $doc = Docfile::findOrFail($request->doc_id);
+        $filePath = $doc->path;
+
+        // Xóa bảng động nếu tồn tại
+        if ($doc->table_name && Schema::hasTable($doc->table_name)) {
+            try {
+                Schema::dropIfExists($doc->table_name);
+                DocVariable::where('table_var_name', $doc->table_name)->update(['is_table_variable_created' => 0]);
+            } catch (\Exception $e) {
+                Log::error('Lỗi khi xóa bảng động: ' . $e->getMessage());
+                return redirect()->route('file.index')->with('error', 'Không thể xóa bảng động "' . $doc->table_name . '": ' . $e->getMessage());
+            }
+        }
+
+        $doc->delete(); // Xóa docfile, tự động xóa doc_variables nhờ onDelete('cascade')
+
+        return redirect()->route('file.index')->with('success', 'Đã xóa file Word "' . $filePath . '" và bảng động (nếu có).');
+    }
+
+    /**
+     * Đọc nội dung file Doc.
+     */
+    public function readDoc($docId)
+    {
+        $doc = Docfile::findOrFail($docId);
+        $filePath = $doc->path;
+
+        if (!file_exists($filePath)) {
+            return response()->json(['error' => 'File không tồn tại tại: ' . $filePath], 404);
+        }
+
+        $content = $doc->content ?: 'Nội dung không có sẵn';
+
+        return view('doc_data', [
+            'content' => $content,
+            'fileName' => $doc->name,
+            'success' => 'Đã đọc file Word "' . $doc->name . '" thành công.'
+        ]);
+    }
+
+    /**
+     * Chọn file Doc, trích xuất biến, tạo bảng động, và đánh dấu đã chọn.
+     */
+    public function selectDoc($docId)
+    {
+        $doc = Docfile::findOrFail($docId);
+        $content = $doc->content ?: '';
+
+        // Chuyển đổi HTML thành văn bản thuần túy
+        $plainText = strip_tags($content);
+        $plainText = html_entity_decode($plainText, ENT_QUOTES, 'UTF-8');
+
+        // Trích xuất các biến dạng {{variable}}
+        preg_match_all('/\{\{([^{}]+)\}\}/', $plainText, $matches);
+        $variables = array_unique(array_map('trim', $matches[1] ?? []));
+
+        // Lưu các biến vào bảng doc_variables
+        foreach ($variables as $variable) {
+            DocVariable::firstOrCreate([
+                'docfile_id' => $doc->id,
+                'var_name' => $variable,
+            ], [
+                'table_var_name' => null,
+                'is_table_variable_created' => 0,
+            ]);
+        }
+
+        // Chuẩn hóa tên bảng: doc_{doc_id}_{tên_doc}
+        $docName = $doc->name ?: 'unnamed_doc';
+        $docName = $this->convertVietnameseToNonAccent(pathinfo($docName, PATHINFO_FILENAME));
+        $docName = preg_replace('/[^a-z0-9_]/', '_', strtolower($docName));
+        $docName = preg_replace('/_+/', '_', $docName);
+        $docName = trim($docName, '_');
+        $docName = Str::limit($docName, 50, '');
+        $tableName = empty($docName) ? "doc_{$docId}_unnamed" : "doc_{$docId}_{$docName}";
+
+        // Kiểm tra xem bảng đã tồn tại chưa
+        if (!Schema::hasTable($tableName)) {
+            try {
+                Schema::create($tableName, function (Blueprint $table) use ($variables) {
+                    $table->id();
+                    $usedColumns = [];
+                    foreach ($variables as $variable) {
+                        // Chuẩn hóa tên cột
+                        $columnName = $this->convertVietnameseToNonAccent($variable);
+                        $columnName = preg_replace('/[^a-z0-9_]/', '_', strtolower($columnName));
+                        $columnName = preg_replace('/_+/', '_', $columnName);
+                        $columnName = trim($columnName, '_');
+                        $columnName = Str::limit($columnName, 64, '');
+
+                        // Kiểm tra trùng lặp tên cột
+                        $originalColumnName = $columnName;
+                        $suffix = 1;
+                        while (in_array($columnName, $usedColumns)) {
+                            $columnName = Str::limit($originalColumnName . '_' . $suffix++, 64, '');
+                        }
+                        $usedColumns[] = $columnName;
+
+                        // Dự phòng nếu tên cột rỗng
+                        if (empty($columnName)) {
+                            $columnName = 'column_' . md5($variable);
+                        }
+
+                        $table->string($columnName)->nullable();
+                    }
+                    $table->timestamps();
+                });
+
+                // Cập nhật bảng doc_variables
+                DocVariable::where('docfile_id', $doc->id)
+                    ->whereIn('var_name', $variables)
+                    ->update([
+                        'table_var_name' => $tableName,
+                        'is_table_variable_created' => 1,
+                    ]);
+
+                // Lưu tên bảng vào cột table_name của docfile
+                $doc->update(['table_name' => $tableName]);
+            } catch (\Exception $e) {
+                Log::error('Lỗi khi tạo bảng động: ' . $e->getMessage());
+                return redirect()->route('file.index')->with('error', 'Không thể tạo bảng cho file "' . $doc->name . '": ' . $e->getMessage());
+            }
+        }
+
+        // Đánh dấu tài liệu đã chọn
+        $doc->update(['is_selected' => 1]);
+
+        return redirect()->route('file.index')->with('success', 'Đã chọn tài liệu "' . $doc->name . '" và trích xuất biến thành công.');
+    }
+
+    /**
      * Trích xuất nội dung từ file Word.
      */
     protected function extractWordContent($phpWord)
     {
         $content = '';
         foreach ($phpWord->getSections() as $section) {
-            // 👉 Đọc header
             $header = $section->getHeader();
             if ($header) {
                 foreach ($header->getElements() as $element) {
@@ -77,7 +240,7 @@ class DocController extends Controller
                 }
             }
             foreach ($section->getElements() as $element) {
-                if ($element instanceof \PhpOffice\PhpWord\Element\TextRun) {
+                if ($element instanceof TextRun) {
                     $paraStyle = method_exists($element, 'getParagraphStyle') ? $element->getParagraphStyle() : null;
                     $alignment = $this->getAlignment($paraStyle);
                     $content .= "<p style=\"text-align: $alignment; margin-bottom: 16px;\">";
@@ -87,8 +250,7 @@ class DocController extends Controller
                             $fontStyle = method_exists($textElement, 'getFontStyle') ? $textElement->getFontStyle() : null;
                             $style = '';
                             if ($fontStyle) {
-                                // Lấy kích thước phông chữ (half-points, chia 2 để ra points gần đúng với px)
-                                $fontSize = method_exists($fontStyle, 'getSize') && $fontStyle->getSize() ? ($fontStyle->getSize() * 2) : 11;;
+                                $fontSize = method_exists($fontStyle, 'getSize') && $fontStyle->getSize() ? $fontStyle->getSize() : 14;
                                 $style .= "font-size: {$fontSize}px; color: #000;";
                                 if ($fontStyle->isBold()) {
                                     $style .= 'font-weight: bold;';
@@ -106,14 +268,14 @@ class DocController extends Controller
                         }
                     }
                     $content .= '</p>';
-                } elseif ($element instanceof \PhpOffice\PhpWord\Element\Table) {
+                } elseif ($element instanceof Table) {
                     $content .= '<table class="table table-bordered" style="min-width: 600px; border-collapse: collapse;">';
                     foreach ($element->getRows() as $row) {
                         $content .= '<tr>';
                         foreach ($row->getCells() as $cell) {
                             $content .= '<td style="border: 1px solid #dee2e6; padding: 12px;">';
                             foreach ($cell->getElements() as $cellElement) {
-                                if ($cellElement instanceof \PhpOffice\PhpWord\Element\TextRun) {
+                                if ($cellElement instanceof TextRun) {
                                     $paraStyle = method_exists($cellElement, 'getParagraphStyle') ? $cellElement->getParagraphStyle() : null;
                                     $alignment = $this->getAlignment($paraStyle);
                                     $content .= "<div style=\"text-align: $alignment;\">";
@@ -123,8 +285,8 @@ class DocController extends Controller
                                             $fontStyle = method_exists($textElement, 'getFontStyle') ? $textElement->getFontStyle() : null;
                                             $style = '';
                                             if ($fontStyle) {
-                                                $fontSize = method_exists($fontStyle, 'getSize') && $fontStyle->getSize() ? ($fontStyle->getSize() / 2) : 11;
-                                                $style .= "font-size: {$fontSize} 100px; color: #000;";
+                                                $fontSize = method_exists($fontStyle, 'getSize') && $fontStyle->getSize() ? $fontStyle->getSize() : 14;
+                                                $style .= "font-size: {$fontSize}px; color: #000;";
                                                 if ($fontStyle->isBold()) {
                                                     $style .= 'font-weight: bold;';
                                                 }
@@ -148,8 +310,7 @@ class DocController extends Controller
                         $content .= '</tr>';
                     }
                     $content .= '</table>';
-                } elseif ($element instanceof \PhpOffice\PhpWord\Element\ListItem) {
-                    // Thay getListStyle() bằng getStyle() hoặc kiểm tra kiểu danh sách
+                } elseif ($element instanceof ListItem) {
                     $listStyle = method_exists($element, 'getStyle') && $element->getStyle() ? $element->getStyle() : 'bullet';
                     $level = method_exists($element, 'getDepth') ? $element->getDepth() : 0;
                     $indent = $level * 20;
@@ -188,7 +349,8 @@ class DocController extends Controller
                             $style .= 'font-weight: bold;';
                         }
                         if ($fontStyle->isItalic()) {
-
+                            $style .= 'font-style: italic;';
+                        }
                         if (method_exists($fontStyle, 'getName') && $fontStyle->getName()) {
                             $style .= "font-family: '{$fontStyle->getName()}';";
                         }
@@ -201,45 +363,15 @@ class DocController extends Controller
                 $content .= '<br>';
             }
         }
-    }
-    return $content;
-    }
-
-    /**
-     * Xóa file Doc.
-     */
-    public function removeDoc(Request $request)
-    {
-        $request->validate([
-            'doc_id' => 'required|integer|exists:docfile,id',
-        ]);
-
-        $doc = Docfile::findOrFail($request->doc_id);
-        $filePath = $doc->path;
-        $doc->delete();
-
-        return redirect()->route('file.index')->with('success', 'Đã xóa file Word: ' . $filePath);
+        return $content;
     }
 
     /**
-     * Đọc nội dung file Doc.
+     * Chuyển đổi tiếng Việt có dấu thành không dấu.
      */
-    public function readDoc($docId)
+    private function convertVietnameseToNonAccent($string)
     {
-        $doc = Docfile::findOrFail($docId);
-        $filePath = $doc->path;
-
-        if (!file_exists($filePath)) {
-            return response()->json(['error' => 'File không tồn tại tại: ' . $filePath], 404);
-        }
-
-        $content = $doc->content ?: 'Nội dung không có sẵn'; // Sử dụng nội dung từ cột content
-
-        return view('doc_data', [
-            'content' => $content,
-            'fileName' => $doc->name,
-            'success' => 'Đã đọc file Word "' . $doc->name . '" thành công.'
-        ]);
+        return ASCII::to_ascii($string, 'vi');
     }
 
     /**

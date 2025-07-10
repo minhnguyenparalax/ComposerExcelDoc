@@ -6,23 +6,17 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
         Schema::table('docfile', function (Blueprint $table) {
-            $table->string('name', 255)->nullable()->after('path');
+            $table->boolean('is_selected')->default(0); // 0: chưa chọn, 1: đã chọn
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::table('docfile', function (Blueprint $table) {
-            $table->dropColumn('name');
+            $table->dropColumn('is_selected');
         });
     }
 };

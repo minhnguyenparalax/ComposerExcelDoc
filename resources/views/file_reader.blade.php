@@ -22,6 +22,37 @@
             min-width: 0;
             color: #000 !important;
         }
+        .card-header {
+            background-color: #f8f9fa;
+            font-weight: 600;
+            font-size: 16px;
+            color: #333;
+            border-bottom: 1px solid #ddd;
+        }
+        .card-body h6 {
+            font-weight: 600;
+            color: #0d6efd;
+            margin-top: 12px;
+            margin-bottom: 5px;
+        }
+        .table {
+            font-size: 14px;
+            margin-bottom: 0;
+        }
+        .table th {
+            background-color: #eaeaea;
+            text-align: center;
+            font-size: 13px;
+        }
+        .table td {
+            font-size: 13px;
+            vertical-align: middle;
+        }
+        .table-bordered {
+            border: 1px solid #dee2e6;
+            border-radius: 6px;
+            overflow: hidden;
+        }
     </style>
 </head>
 <body>
@@ -132,6 +163,9 @@
                                                 <a href="#" class="btn btn-sm btn-info view-doc" data-doc-id="{{ $doc->id }}" data-doc-name="{{ $doc->name }}" data-bs-toggle="modal" data-bs-target="#docModal">
                                                     Xem Doc
                                                 </a>
+                                                <a href="{{ route('doc.selectDoc', ['docId' => $doc->id]) }}" class="btn btn-sm btn-success">
+                                                    Chọn Doc
+                                                </a>
                                                 <span class="doc-name">
                                                     {{ $doc->name ?: '[Tên file không xác định]' }}
                                                 </span>
@@ -149,6 +183,74 @@
                             </table>
                         @else
                             <p>Không có file Doc nào.</p>
+                        @endif
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <!-- Danh sách Sheet đã được tạo bảng -->
+            <div class="col-md-6">
+                <div class="card mb-4">
+                    <div class="card-header">Danh sách Sheet đã được tạo bảng</div>
+                    <div class="card-body">
+                        @if ($excelFilesWithCreatedSheets->isNotEmpty())
+                            @foreach ($excelFilesWithCreatedSheets as $excelFile)
+                                <h6>File: {{ $excelFile->name }}</h6>
+                                <table class="table table-bordered">
+                                    <thead>
+                                        <tr>
+                                            <th>Sheet Name</th>
+                                            <th>Table Name</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach ($excelFile->sheets as $sheet)
+                                            <tr>
+                                                <td>{{ $sheet->name }}</td>
+                                                <td>{{ $sheet->table_name }}</td>
+                                            </tr>
+                                        @endforeach
+                                    </tbody>
+                                </table>
+                            @endforeach
+                        @else
+                            <p>Chưa có sheet nào được tạo bảng.</p>
+                        @endif
+                    </div>
+                </div>
+            </div>
+
+            <!-- Danh sách biến của Doc -->
+            <div class="col-md-6">
+                <div class="card mb-4">
+                    <div class="card-header">Danh sách biến của Doc</div>
+                    <div class="card-body">
+                        @if ($selectedDocs->isNotEmpty())
+                            @foreach ($selectedDocs as $doc)
+                                <h6>File: {{ $doc->name }}</h6>
+                                <table class="table table-bordered">
+                                    <thead>
+                                        <tr>
+                                            <th>Tên biến</th>
+                                            <th>Tên bảng động</th>
+                                            <th>Trạng thái</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach ($doc->variables as $variable)
+                                            <tr>
+                                                <td>{{ $variable->var_name }}</td>
+                                                <td>{{ $variable->table_var_name ?? 'Chưa tạo' }}</td>
+                                                <td>{{ $variable->is_table_variable_created ? 'Đã tạo' : 'Chưa tạo' }}</td>
+                                            </tr>
+                                        @endforeach
+                                    </tbody>
+                                </table>
+                            @endforeach
+                        @else
+                            <p>Chưa có tài liệu nào được chọn.</p>
                         @endif
                     </div>
                 </div>
@@ -195,7 +297,6 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script>
-        // Xử lý nút Xem cho Doc
         $(document).ready(function() {
             // Xử lý nút Xem cho Doc
             $('.view-doc').click(function(e) {
@@ -237,11 +338,6 @@
                     }
                 });
             });
-
-        
-            // Xử lý nút Chọn cho Sheet
-            
-
         });
     </script>
 </body>
