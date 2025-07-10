@@ -9,6 +9,9 @@ use PhpOffice\PhpWord\Element\Table;
 use PhpOffice\PhpWord\Element\ListItem;
 use PhpOffice\PhpWord\Style\Paragraph;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Str;
 
 class DocController extends Controller
 {
@@ -206,8 +209,8 @@ class DocController extends Controller
     }
 
     /**
-     * Xóa file Doc.
-     */
+ * Xóa file Doc và bảng động tương ứng.
+ */
     public function removeDoc(Request $request)
     {
         $request->validate([
@@ -216,10 +219,23 @@ class DocController extends Controller
 
         $doc = Docfile::findOrFail($request->doc_id);
         $filePath = $doc->path;
+
+        // Xóa bảng động nếu tồn tại
+        if ($doc->table_name && Schema::hasTable($doc->table_name)) {
+            try {
+                Schema::dropIfExists($doc->table_name);
+            } catch (\Exception $e) {
+                \Log::error('Lỗi khi xóa bảng động: ' . $e->getMessage());
+                return redirect()->route('file.index')->with('error', 'Không thể xóa bảng động "' . $doc->table_name . '": ' . $e->getMessage());
+            }
+        }
+
         $doc->delete();
 
-        return redirect()->route('file.index')->with('success', 'Đã xóa file Word: ' . $filePath);
+        return redirect()->route('file.index')->with('success', 'Đã xóa file Word "' . $filePath . '" và bảng động (nếu có).');
     }
+
+    
 
     /**
      * Đọc nội dung file Doc.
@@ -239,6 +255,57 @@ class DocController extends Controller
             'content' => $content,
             'fileName' => $doc->name,
             'success' => 'Đã đọc file Word "' . $doc->name . '" thành công.'
+        ]);
+
+        
+    }
+
+    /**
+     * Chọn file Doc, trích xuất biến, và tạo bảng động trong database.
+     */
+    public function selectDoc($docId)
+    {
+        $doc = Docfile::findOrFail($docId);
+        $content = $doc->content ?: '';
+
+        // Chuyển đổi HTML thành văn bản thuần túy
+        $plainText = strip_tags($content);
+        $plainText = html_entity_decode($plainText, ENT_QUOTES, 'UTF-8');
+
+        // Trích xuất các biến dạng {{variable}}
+        preg_match_all('/\{\{([^{}]+)\}\}/', $plainText, $matches);
+        $variables = array_unique(array_map('trim', $matches[1] ?? []));
+
+        // Chuẩn hóa tên bảng: Doc_{doc_id}_{tên_doc}
+        $docName = $doc->name ?: 'unnamed_doc';
+        $docName = Str::slug(preg_replace('/[^A-Za-z0-9]/', '_', pathinfo($docName, PATHINFO_FILENAME)), '_');
+        $tableName = "Doc_{$docId}_{$docName}";
+
+        // Kiểm tra xem bảng đã tồn tại chưa
+        if (!Schema::hasTable($tableName)) {
+            try {
+                Schema::create($tableName, function (Blueprint $table) use ($variables) {
+                    $table->id();
+                    foreach ($variables as $variable) {
+                        $columnName = Str::slug(preg_replace('/[^A-Za-z0-9]/', '_', $variable), '_');
+                        $table->string($columnName)->nullable();
+                    }
+                    $table->timestamps();
+                });
+
+                // Lưu tên bảng vào cột table_name
+                $doc->update(['table_name' => $tableName]);
+            } catch (\Exception $e) {
+                \Log::error('Lỗi khi tạo bảng động: ' . $e->getMessage());
+                return redirect()->route('file.index')->with('error', 'Không thể tạo bảng cho file "' . $doc->name . '": ' . $e->getMessage());
+            }
+        }
+
+        return view('doc_variables', [
+            'docName' => $doc->name,
+            'variables' => $variables,
+            'tableName' => $tableName,
+            'success' => 'Đã trích xuất biến và tạo bảng "' . $tableName . '" cho file "' . $doc->name . '" thành công.'
         ]);
     }
 

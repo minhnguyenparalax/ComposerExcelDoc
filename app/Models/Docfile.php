@@ -12,9 +12,10 @@ class Docfile extends Model
     protected $table = 'docfile';
 
     protected $fillable = [
-        'path',
-        'name',
-        'content',
-        'primary_key',
+    'path',
+    'name',
+    'content',
+    'primary_key',
+    'table_name',
     ];
 }
