@@ -305,6 +305,8 @@
         <!-- Sửa script (thêm AJAX cho selectDoc và initPopovers) -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    
     <script>
         $(document).ready(function() {
             // Hàm khởi tạo popover
@@ -376,7 +378,20 @@
                 });
             });
 
-            // Xử lý nút Xem cho Excel
+            
+
+            // Khởi tạo popover
+            var popoverTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="popover"]'));
+            popoverTriggerList.forEach(function (popoverTriggerEl) {
+                new bootstrap.Popover(popoverTriggerEl, {
+                    trigger: 'click',
+                    placement: 'top',
+                    customClass: 'custom-popover'
+                });
+            });
+        });
+
+                // Xử lý nút Xem cho Excel
             $('.view-sheet').click(function(e) {
                 e.preventDefault();
                 var fileId = $(this).data('file-id');
@@ -396,18 +411,11 @@
                 });
             });
 
-            // Khởi tạo popover
-            var popoverTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="popover"]'));
-            popoverTriggerList.forEach(function (popoverTriggerEl) {
-                new bootstrap.Popover(popoverTriggerEl, {
-                    trigger: 'click',
-                    placement: 'top',
-                    customClass: 'custom-popover'
-                });
-            });
-        });
+        
         
     </script>
+
+    
 
     <!-- Modal xem nội dung file Word -->
     <div class="modal fade" id="docModal" tabindex="-1" aria-labelledby="docModalLabel" aria-hidden="true">
@@ -424,6 +432,29 @@
       </div>
     </div>
 
+    <!-- Modal cho nội dung Excel -->
+        <div class="modal fade" id="excelModal" tabindex="-1" aria-labelledby="excelModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-xl">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="excelModalLabel">Nội dung Sheet Excel</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div id="excelContent"></div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    
+
 </body>
 </html>
 ```
+
+

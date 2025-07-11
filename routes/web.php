@@ -12,8 +12,10 @@ Route::get('/excel/select/{fileId}/{sheetId}', [ExcelController::class, 'readShe
 
 Route::get('/files', [DocController::class, 'index'])->name('file.index');
 
+
 Route::post('/doc/add', [DocController::class, 'addDoc'])->name('doc.addDoc');
 Route::post('/doc/remove', [DocController::class, 'removeDoc'])->name('doc.removeDoc');
 Route::get('/doc/read/{docId}', [DocController::class, 'readDoc'])->name('doc.readDoc');
 Route::post('/excel/create-table-and-insert-data/{fileId}/{sheetId}', [ExcelController::class, 'createTableAndInsertData'])->name('excel.createTableAndInsertData');
 Route::get('/doc/select/{docId}', [App\Http\Controllers\DocController::class, 'selectDoc'])->name('doc.selectDoc');
+
