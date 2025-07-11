@@ -220,6 +220,16 @@ class DocController extends Controller
         // Đánh dấu tài liệu đã chọn
         $doc->update(['is_selected' => 1]);
 
+        // Lấy lại danh sách biến thực tế từ doc_variables
+        $docVariables = DocVariable::where('docfile_id', $doc->id)->pluck('var_name')->toArray();
+
+        if (request()->ajax() || request()->wantsJson()) {
+            return response()->json([
+                'doc_name' => $doc->name,
+                'variables' => $docVariables, // Mảng tên biến
+            ]);
+        }
+        // Nếu là request thường, redirect như cũ
         return redirect()->route('file.index')->with('success', 'Đã chọn tài liệu "' . $doc->name . '" và trích xuất biến thành công.');
     }
 
