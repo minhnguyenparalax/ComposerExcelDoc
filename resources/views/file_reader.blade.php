@@ -97,45 +97,6 @@
         .card mb-3 {
             margin-bottom: 1rem !important;
         }
-
-        .mapping-btn {
-            padding: 2px 6px;
-            margin-left: 8px;
-            font-size: 12px;
-            line-height: 1;
-        }
-        .mapping-btn i {
-            font-size: 10px;
-        }
-        .custom-popover {
-            min-width: 300px;
-            max-width: 500px;
-            z-index: 1060;
-        }
-        .popover-header {
-            background-color: #f0f4ff;
-            color: #333;
-            font-size: 12px;
-            padding: 6px 10px;
-        }
-        .popover-body {
-            padding: 8px 10px;
-            color: #333;
-            font-size: 13px;
-        }
-        .popover-body ul {
-            padding-left: 18px;
-            margin-bottom: 0;
-        }
-        .popover-body li {
-            margin-bottom: 4px;
-        }
-        .tooltip-inner {
-            font-size: 12px;
-            background-color: #333;
-            color: #fff;
-            padding: 4px 8px;
-        }
     </style>
 </head>
 <body>
@@ -262,21 +223,7 @@
                                                     @if ($doc->variables->count())
                                                         <ul style="margin-bottom:0;">
                                                             @foreach ($doc->variables as $variable)
-<li>
-                                                                    {{ $variable->var_name }}
-                                                                    <button class="btn btn-sm btn-outline-primary mapping-btn"
-                                                                            data-variable-id="{{ $variable->id }}"
-                                                                            data-bs-toggle="popover"
-                                                                            data-bs-placement="right"
-                                                                            data-bs-html="true"
-                                                                            data-bs-trigger="manual"
-                                                                            title="Danh sách cột Excel"
-                                                                            data-bs-content="Đang tải..."
-                                                                            data-bs-tooltip="tooltip"
-                                                                            data-bs-title="Danh sách cột Excel">
-                                                                        <i class="fas fa-link"></i>
-                                                                    </button>
-                                                                </li>
+                                                                <li>{{ $variable->var_name }}</li>
                                                             @endforeach
                                                         </ul>
                                                     @else
@@ -362,22 +309,20 @@
     
     <script>
         $(document).ready(function() {
-            // Khởi tạo Popover và Tooltip
-            function initPopoversAndTooltips() {
-                $('[data-bs-tooltip="tooltip"]').tooltip({
-                    trigger: 'hover',
-                    placement: 'top'
-                });
-                $('[data-bs-toggle="popover"]').popover({
-                    trigger: 'manual',
-                    placement: 'right',
-                    html: true,
-                    customClass: 'custom-popover'
+            // Hàm khởi tạo popover
+            function initPopovers() {
+                var popoverTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="popover"]'));
+                popoverTriggerList.forEach(function (popoverTriggerEl) {
+                    new bootstrap.Popover(popoverTriggerEl, {
+                        trigger: 'click',
+                        placement: 'top',
+                        customClass: 'custom-popover'
+                    });
                 });
             }
 
-            // Gọi khởi tạo
-            initPopoversAndTooltips();
+            // Gọi khởi tạo popover khi tải trang
+            initPopovers();
 
             // Xử lý nút Xem cho Doc
             $('.view-doc').click(function(e) {
@@ -385,37 +330,15 @@
                 var docId = $(this).data('doc-id');
                 var docName = $(this).data('doc-name');
                 $('#docModalLabel').text('Nội dung File Word: ' + docName);
+
                 $.ajax({
                     url: '{{ route("doc.readDoc", ":docId") }}'.replace(':docId', docId),
                     type: 'GET',
                     success: function(response) {
                         $('#docContent').html(response);
-                        $('#docModal').modal('show');
                     },
                     error: function(xhr) {
                         $('#docContent').html('<p class="text-danger">Lỗi: ' + (xhr.responseJSON?.error || 'Không thể tải nội dung Word.') + '</p>');
-                        $('#docModal').modal('show');
-                    }
-                });
-            });
-
-            // Xử lý nút Xem cho Excel
-            $('.view-sheet').click(function(e) {
-                e.preventDefault();
-                var fileId = $(this).data('file-id');
-                var sheetId = $(this).data('sheet-id');
-                var sheetName = $(this).data('sheet-name');
-                $('#excelModalLabel').text('Nội dung Sheet Excel: ' + sheetName);
-                $.ajax({
-                    url: '{{ route("excel.readSheet", [":fileId", ":sheetId"]) }}'.replace(':fileId', fileId).replace(':sheetId', sheetId),
-                    type: 'GET',
-                    success: function(response) {
-                        $('#excelContent').html(response);
-                        $('#excelModal').modal('show');
-                    },
-                    error: function(xhr) {
-                        $('#excelContent').html('<p class="text-danger">Lỗi: ' + (xhr.responseJSON?.error || 'Không thể tải nội dung Excel.') + '</p>');
-                        $('#excelModal').modal('show');
                     }
                 });
             });
@@ -434,27 +357,12 @@
                         block.append('<strong>Biến đã trích xuất:</strong>');
                         if (Array.isArray(response.variables) && response.variables.length > 0) {
                             var ul = $('<ul style="margin-bottom:0;"></ul>');
-                            response.variables.forEach(function(v) {
-                                ul.append('<li>' + v.var_name + 
-                                    '<button class="btn btn-sm btn-outline-primary mapping-btn" ' +
-                                    'data-variable-id="' + v.id + '" ' +
-                                    'data-bs-toggle="popover" ' +
-                                    'data-bs-placement="right" ' +
-                                    'data-bs-html="true" ' +
-                                    'data-bs-trigger="manual" ' +
-                                    'title="Danh sách cột Excel" ' +
-                                    'data-bs-content="Đang tải..." ' +
-                                    'data-bs-tooltip="tooltip" ' +
-                                    'data-bs-title="Danh sách cột Excel">' +
-                                    '<i class="fas fa-link"></i></button></li>'
-                                );
-                            });
+                            response.variables.forEach(function(v) { ul.append('<li>' + v + '</li>'); });
                             block.append(ul);
                         } else {
                             block.append('<div class="text-muted">Không tìm thấy biến nào trong file này.</div>');
                         }
                         $button.replaceWith(block);
-                        initPopoversAndTooltips();
                         var alert = '<div class="alert alert-success alert-dismissible fade show" role="alert">' +
                                     '<h5>Thông báo</h5><p>Đã trích xuất biến cho tài liệu "' + response.doc_name + '".</p>' +
                                     '<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button></div>';
@@ -470,58 +378,41 @@
                 });
             });
 
-            // Xử lý nút Mapping
-            $(document).on('click', '.mapping-btn', function(e) {
-                e.preventDefault();
-                e.stopPropagation();
-                var $button = $(this);
-                var variableId = $button.data('variable-id');
-                var isVisible = $button.data('bs.popover') && $button.data('bs.popover')._isShown;
+            
 
-                $('.mapping-btn').not($button).popover('hide');
-                if (isVisible) {
-                    $button.popover('hide');
-                } else {
-                    $.ajax({
-                        url: '{{ route("excel_doc_mapping.getFields", ":variableId") }}'.replace(':variableId', variableId),
-                        type: 'GET',
-                        success: function(response) {
-                            var content = '<ul>';
-                            response.sheets.forEach(function(sheet) {
-                                content += '<li>' + sheet.excel_file + '\\' + sheet.sheet_name + '<ul>';
-                                sheet.columns.forEach(function(col) {
-                                    // Format tên cột
-                                    var formattedCol = col.replace(/_/g, ' ')
-                                        .replace(/\b\w/g, c => c.toUpperCase());
-                                    content += '<li>' + formattedCol + '</li>';
-                                });
-                                content += '</ul></li>';
-                            });
-                            content += '</ul>';
-                            $button.popover('update', {
-                                '.popover-header': response.variable_name,
-                                '.popover-body': content
-                            });
-                            $button.popover('show');
-                        },
-                        error: function(xhr) {
-                            $button.popover('update', {
-                                '.popover-header': 'Lỗi',
-                                '.popover-body': '<div class="text-danger">Lỗi: ' + (xhr.responseJSON?.error || 'Không thể tải danh sách cột.') + '</div>'
-                            });
-                            $button.popover('show');
-                        }
-                    });
-                }
-            });
-
-            // Đóng popover khi click ra ngoài
-            $(document).on('click', function(e) {
-                if (!$(e.target).closest('.mapping-btn, .popover').length) {
-                    $('.mapping-btn').popover('hide');
-                }
+            // Khởi tạo popover
+            var popoverTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="popover"]'));
+            popoverTriggerList.forEach(function (popoverTriggerEl) {
+                new bootstrap.Popover(popoverTriggerEl, {
+                    trigger: 'click',
+                    placement: 'top',
+                    customClass: 'custom-popover'
+                });
             });
         });
+
+                // Xử lý nút Xem cho Excel
+            $('.view-sheet').click(function(e) {
+                e.preventDefault();
+                var fileId = $(this).data('file-id');
+                var sheetId = $(this).data('sheet-id');
+                var sheetName = $(this).data('sheet-name');
+                $('#excelModalLabel').text('Nội dung Sheet Excel: ' + sheetName);
+
+                $.ajax({
+                    url: '{{ route("excel.readSheet", [":fileId", ":sheetId"]) }}'.replace(':fileId', fileId).replace(':sheetId', sheetId),
+                    type: 'GET',
+                    success: function(response) {
+                        $('#excelContent').html(response);
+                    },
+                    error: function(xhr) {
+                        $('#excelContent').html('<p class="text-danger">Lỗi: ' + (xhr.responseJSON?.error || 'Không thể tải nội dung Excel.') + '</p>');
+                    }
+                });
+            });
+
+        
+        
     </script>
 
     
