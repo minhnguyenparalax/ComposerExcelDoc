@@ -57,7 +57,7 @@
             overflow: hidden;
         }
 
-
+        /*Nút mapping*/
         .variable-item {
             display: flex;
             align-items: center;
@@ -68,9 +68,28 @@
             color: #0d6efd; /* Màu icon, trùng với màu liên kết trong giao diện */
         }
 
+        /* Hiển thị danh sách tên các trường của sheet động */
 
-
-
+        .mapping-modal .modal-body {
+            max-height: 400px;
+            overflow-y: auto; /* Cuộn nếu danh sách dài */
+        }
+        .mapping-modal .sheet-item {
+            margin-bottom: 10px;
+        }
+        .mapping-modal .sheet-item h6 {
+            font-size: 14px;
+            font-weight: 600;
+            color: #333;
+        }
+        .mapping-modal .sheet-item ul {
+            padding-left: 20px;
+            margin-bottom: 0;
+        }
+        .mapping-modal .sheet-item li {
+            font-size: 13px;
+            color: #555;
+        }
 
 
         .popover-btn {
@@ -242,8 +261,7 @@
                                                             @foreach ($doc->variables as $variable)
                                                                 <li class="variable-item">
                                                                     {{ $variable->var_name }}
-                                                                    <i class="fa-solid fa-link" title="Mapping"></i>
-                                                                    
+                                                                    <i class="fa-solid fa-link mapping-icon" title="Ánh xạ variable và field" data-variable-id="{{ $variable->id }}" data-bs-toggle="modal" data-bs-target="#mappingModal"></i>
                                                                 </li>
                                                             @endforeach
                                                         </ul>
@@ -432,6 +450,39 @@
                 });
             });
 
+            // Xử lý click vào icon mapping
+            $(document).on('click', '.mapping-icon', function() {
+                var variableId = $(this).data('variable-id');
+                var variableName = $(this).siblings().text().trim();
+                $('#mappingModalLabel').text('Ánh xạ cho biến: ' + variableName);
+
+                $.ajax({
+                    url: '{{ route("excel_doc_mapping.getFields", ":variableId") }}'.replace(':variableId', variableId),
+                    type: 'GET',
+                    success: function(response) {
+                        var content = '';
+                        if (response.sheets && response.sheets.length > 0) {
+                            response.sheets.forEach(function(sheet) {
+                                content += '<div class="sheet-item">';
+                                content += '<h6>File: ' + sheet.excel_file + ' - Sheet: ' + sheet.sheet_name + '</h6>';
+                                content += '<ul>';
+                                sheet.columns.forEach(function(column) {
+                                    content += '<li>' + column + '</li>';
+                                });
+                                content += '</ul>';
+                                content += '</div>';
+                            });
+                        } else {
+                            content = '<p class="text-muted">Không có sheet nào được tạo bảng.</p>';
+                        }
+                        $('#mappingContent').html(content);
+                    },
+                    error: function(xhr) {
+                        $('#mappingContent').html('<p class="text-danger">Lỗi: ' + (xhr.responseJSON?.error || 'Không thể tải danh sách sheet.') + '</p>');
+                    }
+                });
+            });
+
         
         
     </script>
@@ -467,6 +518,24 @@
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
                     </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal cho danh sách sheet và field -->
+    <div class="modal fade mapping-modal" id="mappingModal" tabindex="-1" aria-labelledby="mappingModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="mappingModalLabel">Ánh xạ cho biến</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body" id="mappingContent">
+                    <div class="text-center text-muted">Đang tải danh sách sheet...</div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
                 </div>
             </div>
         </div>
