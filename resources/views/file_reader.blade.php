@@ -56,6 +56,23 @@
             border-radius: 6px;
             overflow: hidden;
         }
+
+
+        .variable-item {
+            display: flex;
+            align-items: center;
+            gap: 8px; /* Khoảng cách giữa tên biến và icon */
+        }
+        .variable-item i {
+            font-size: 14px; /* Kích thước icon */
+            color: #0d6efd; /* Màu icon, trùng với màu liên kết trong giao diện */
+        }
+
+
+
+
+
+
         .popover-btn {
             padding: 2px 4px;
             font-size: 12px;
@@ -223,7 +240,11 @@
                                                     @if ($doc->variables->count())
                                                         <ul style="margin-bottom:0;">
                                                             @foreach ($doc->variables as $variable)
-                                                                <li>{{ $variable->var_name }}</li>
+                                                                <li class="variable-item">
+                                                                    {{ $variable->var_name }}
+                                                                    <i class="fa-solid fa-link" title="Mapping"></i>
+                                                                    
+                                                                </li>
                                                             @endforeach
                                                         </ul>
                                                     @else
