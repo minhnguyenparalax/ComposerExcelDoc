@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 use App\Models\DocVariable;
 use App\Models\ExcelSheets;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Log;
 
 class ExcelDocMappingController extends Controller
 {
@@ -32,7 +33,7 @@ class ExcelDocMappingController extends Controller
                 'sheets' => $sheetsData
             ]);
         } catch (\Exception $e) {
-            \Log::error('Lỗi khi lấy danh sách cột: ' . $e->getMessage());
+            Log::error('Lỗi khi lấy danh sách cột: ' . $e->getMessage());
             return response()->json(['error' => 'Không thể tải danh sách cột'], 500);
         }
     }

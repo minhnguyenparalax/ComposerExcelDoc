@@ -65,29 +65,40 @@
         }
         .variable-item i {
             font-size: 14px; /* Kích thước icon */
-            color: #0d6efd; /* Màu icon, trùng với màu liên kết trong giao diện */
+            color: #0d6efd; /* Màu icon */
+            cursor: pointer; /* Con trỏ tay khi di chuột */
+            transition: all 0.3s ease; /* Hiệu ứng chuyển mượt */
+        }
+        .variable-item i:hover {
+            color: #00f6e2ff; /* Màu vàng sáng khi hover */
+            text-shadow: 0 0 8px #00f6e2ff(255, 202, 40, 0.8); /* Hiệu ứng lóe sáng */
         }
 
         /* Hiển thị danh sách tên các trường của sheet động */
 
-        .mapping-modal .modal-body {
-            max-height: 400px;
-            overflow-y: auto; /* Cuộn nếu danh sách dài */
+        .variable-sheet-list {
+            margin-top: 5px;
+            padding: 8px;
+            background: #f8f9fa;
+            border: 1px solid #e0e0e0;
+            border-radius: 4px;
+            display: none; /* Ẩn mặc định */
         }
-        .mapping-modal .sheet-item {
-            margin-bottom: 10px;
+        .variable-sheet-list.active {
+            display: block; /* Hiển thị khi click */
         }
-        .mapping-modal .sheet-item h6 {
-            font-size: 14px;
+        .variable-sheet-list h6 {
+            font-size: 13px;
             font-weight: 600;
             color: #333;
+            margin-bottom: 5px;
         }
-        .mapping-modal .sheet-item ul {
-            padding-left: 20px;
+        .variable-sheet-list ul {
+            padding-left: 15px;
             margin-bottom: 0;
         }
-        .mapping-modal .sheet-item li {
-            font-size: 13px;
+        .variable-sheet-list li {
+            font-size: 12px;
             color: #555;
         }
 
@@ -261,7 +272,8 @@
                                                             @foreach ($doc->variables as $variable)
                                                                 <li class="variable-item">
                                                                     {{ $variable->var_name }}
-                                                                    <i class="fa-solid fa-link mapping-icon" title="Ánh xạ variable và field" data-variable-id="{{ $variable->id }}" data-bs-toggle="modal" data-bs-target="#mappingModal"></i>
+                                                                    <i class="fa-solid fa-link mapping-icon" title="Ánh xạ variable và field" data-variable-id="{{ $variable->id }}"></i>
+                                                                    <div class="variable-sheet-list" id="sheet-list-{{ $variable->id }}"></div>
                                                                 </li>
                                                             @endforeach
                                                         </ul>
@@ -451,10 +463,17 @@
             });
 
             // Xử lý click vào icon mapping
+            // Xử lý click vào icon mapping
             $(document).on('click', '.mapping-icon', function() {
-                var variableId = $(this).data('variable-id');
-                var variableName = $(this).siblings().text().trim();
-                $('#mappingModalLabel').text('Ánh xạ cho biến: ' + variableName);
+                var $icon = $(this);
+                var variableId = $icon.data('variable-id');
+                var $sheetList = $('#sheet-list-' + variableId);
+                
+                // Toggle hiển thị/ẩn danh sách
+                if ($sheetList.hasClass('active')) {
+                    $sheetList.removeClass('active').empty();
+                    return;
+                }
 
                 $.ajax({
                     url: '{{ route("excel_doc_mapping.getFields", ":variableId") }}'.replace(':variableId', variableId),
@@ -475,10 +494,10 @@
                         } else {
                             content = '<p class="text-muted">Không có sheet nào được tạo bảng.</p>';
                         }
-                        $('#mappingContent').html(content);
+                        $sheetList.html(content).addClass('active');
                     },
                     error: function(xhr) {
-                        $('#mappingContent').html('<p class="text-danger">Lỗi: ' + (xhr.responseJSON?.error || 'Không thể tải danh sách sheet.') + '</p>');
+                        $sheetList.html('<p class="text-danger">Lỗi: ' + (xhr.responseJSON?.error || 'Không thể tải danh sách sheet.') + '</p>').addClass('active');
                     }
                 });
             });
@@ -524,22 +543,7 @@
     </div>
 
     <!-- Modal cho danh sách sheet và field -->
-    <div class="modal fade mapping-modal" id="mappingModal" tabindex="-1" aria-labelledby="mappingModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="mappingModalLabel">Ánh xạ cho biến</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body" id="mappingContent">
-                    <div class="text-center text-muted">Đang tải danh sách sheet...</div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
-                </div>
-            </div>
-        </div>
-    </div>
+    <!--Đang tạm xóa>
 
     
 
