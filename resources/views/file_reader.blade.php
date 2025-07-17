@@ -315,7 +315,9 @@
                 
                 <div class="card-body">
                     @if ($excelFilesWithCreatedSheets->isNotEmpty())
+                        
                         @foreach ($excelFilesWithCreatedSheets as $excelFile)
+
                             <h6>File: {{ $excelFile->name }}</h6>
                             <table class="table table-bordered">
                                 <thead>
@@ -478,7 +480,7 @@
                     url: '{{ route("excel_doc_mapping.getFields", ":variableId") }}'.replace(':variableId', variableId),
                     type: 'GET',
                     success: function(response) {
-                        var content = '';
+                        var content = '<h5 class="variable-dropdown">Biến đã trích xuất</h5>';
                         if (response.sheets && response.sheets.length > 0) {
                             response.sheets.forEach(function(sheet) {
                                 content += '<div class="sheet-item">';
