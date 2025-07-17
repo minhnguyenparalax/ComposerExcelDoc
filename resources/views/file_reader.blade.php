@@ -76,28 +76,27 @@
 
         /* Hiển thị danh sách tên các trường của sheet động */
 
-        .variable-sheet-list {
-            margin-top: 5px;
-            padding: 8px;
-            background: #f8f9fa;
+        .variable-dropdown {
+            max-height: 200px; /* Giới hạn chiều cao */
+            overflow-y: auto; /* Cuộn nếu dài */
+            background: #fff;
             border: 1px solid #e0e0e0;
             border-radius: 4px;
-            display: none; /* Ẩn mặc định */
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+            padding: 8px;
+            min-width: 200px;
         }
-        .variable-sheet-list.active {
-            display: block; /* Hiển thị khi click */
-        }
-        .variable-sheet-list h6 {
+        .variable-dropdown h6 {
             font-size: 13px;
             font-weight: 600;
             color: #333;
             margin-bottom: 5px;
         }
-        .variable-sheet-list ul {
+        .variable-dropdown ul {
             padding-left: 15px;
             margin-bottom: 0;
         }
-        .variable-sheet-list li {
+        .variable-dropdown li {
             font-size: 12px;
             color: #555;
         }
@@ -270,10 +269,10 @@
                                                     @if ($doc->variables->count())
                                                         <ul style="margin-bottom:0;">
                                                             @foreach ($doc->variables as $variable)
-                                                                <li class="variable-item">
+                                                                <li class="variable-item dropdown">
                                                                     {{ $variable->var_name }}
-                                                                    <i class="fa-solid fa-link mapping-icon" title="Ánh xạ variable và field" data-variable-id="{{ $variable->id }}"></i>
-                                                                    <div class="variable-sheet-list" id="sheet-list-{{ $variable->id }}"></div>
+                                                                    <i class="fa-solid fa-link mapping-icon" title="Ánh xạ variable và field" data-variable-id="{{ $variable->id }}" data-bs-toggle="dropdown"></i>
+                                                                    <div class="dropdown-menu variable-dropdown" id="sheet-list-{{ $variable->id }}"></div>
                                                                 </li>
                                                             @endforeach
                                                         </ul>
@@ -316,7 +315,9 @@
                 
                 <div class="card-body">
                     @if ($excelFilesWithCreatedSheets->isNotEmpty())
+                        
                         @foreach ($excelFilesWithCreatedSheets as $excelFile)
+
                             <h6>File: {{ $excelFile->name }}</h6>
                             <table class="table table-bordered">
                                 <thead>
@@ -479,7 +480,7 @@
                     url: '{{ route("excel_doc_mapping.getFields", ":variableId") }}'.replace(':variableId', variableId),
                     type: 'GET',
                     success: function(response) {
-                        var content = '';
+                        var content = '<h5 class="variable-dropdown">Biến đã trích xuất</h5>';
                         if (response.sheets && response.sheets.length > 0) {
                             response.sheets.forEach(function(sheet) {
                                 content += '<div class="sheet-item">';
