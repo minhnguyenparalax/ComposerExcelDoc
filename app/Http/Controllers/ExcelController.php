@@ -245,7 +245,7 @@ class ExcelController extends Controller
                         $totalColumns = count($headers);
 
                         for ($index = 0; $index < $totalColumns; $index++) {
-                            $field = $headers[$index];
+                            $field = $headers[$index];   // Duyệt Tên trường của headers mỗi sheet 
                             $baseName = !empty($field) ? Str::slug($field, '_') : 'null_' . $index;
                             $columnName = $baseName;
                             $suffix = 2;
@@ -260,6 +260,10 @@ class ExcelController extends Controller
 
                         $table->timestamps();
                     });
+                    $sheet->is_table_created = true;
+                    $headers = array_map(fn($header) => preg_replace('/[\r\n]+/', ' ', trim($header)), $headers);
+                    $sheet->original_headers = json_encode($headers, JSON_UNESCAPED_UNICODE); // Lưu tiêu đề gốc
+                    $sheet->save();
                 }
 
                 $insertedCount = 0;
