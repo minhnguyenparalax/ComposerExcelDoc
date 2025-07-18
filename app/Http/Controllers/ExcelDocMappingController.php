@@ -3,38 +3,42 @@ namespace App\Http\Controllers;
 
 use App\Models\DocVariable;
 use App\Models\ExcelSheets;
+use App\Models\Excelfiles;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Log;
 
 class ExcelDocMappingController extends Controller
 {
-    public function getFields($variableId)
+        public function getFields($variableId)
     {
-        try {
-            $variable = DocVariable::findOrFail($variableId);
-            $sheets = ExcelSheets::where('is_table_created', true)
-                ->with('excelfile')
-                ->get();
-            $sheetsData = [];
-            foreach ($sheets as $sheet) {
-                $tableName = $sheet->table_name;
-                if (Schema::hasTable($tableName)) {
-                    $columns = Schema::getColumnListing($tableName); // Không lọc id, null_0
-                    $sheetsData[] = [
-                        'excel_file' => $sheet->excelfile->name,
-                        'sheet_name' => $sheet->name,
-                        'columns' => array_values($columns)
-                    ];
+        $sheets = [];
+        $excelFiles = Excelfiles::whereHas('sheets', function ($query) {
+            $query->where('is_table_created', true);
+        })->with(['sheets' => function ($query) {
+            $query->where('is_table_created', true);
+        }])->get();
+
+        foreach ($excelFiles as $excelFile) {
+            foreach ($excelFile->sheets as $sheet) {
+                $columns = Schema::getColumnListing($sheet->table_name);
+                $columns = array_filter($columns, fn($column) => $column !== 'id' && $column !== 'created_at' && $column !== 'updated_at');
+                $originalHeaders = json_decode($sheet->original_headers, true, 512, JSON_UNESCAPED_UNICODE) ?? [];
+                $mappedColumns = [];
+                foreach ($columns as $index => $column) {
+                    $mappedColumns[] = $originalHeaders[$index] ?? $column; // Dùng tên gốc nếu có
                 }
+                $sheets[] = [
+                    'excel_file' => $excelFile->name,
+                    'sheet_name' => $sheet->name,
+                    'columns' => $mappedColumns,
+                ];
             }
-            return response()->json([
-                'variable_id' => $variableId,
-                'variable_name' => $variable->var_name,
-                'sheets' => $sheetsData
-            ]);
-        } catch (\Exception $e) {
-            Log::error('Lỗi khi lấy danh sách cột: ' . $e->getMessage());
-            return response()->json(['error' => 'Không thể tải danh sách cột'], 500);
         }
+
+        return response()->json([
+            'variable_id' => $variableId,
+            'variable_name' => DocVariable::findOrFail($variableId)->var_name,
+            'sheets' => $sheets,
+        ]);
     }
 }
