@@ -54,7 +54,7 @@
         .table-bordered {
             border: 1px solid #dee2e6;
             border-radius: 6px;
-            overflow: hidden;
+            overflow: 
         }
 
         /*Nút mapping*/
@@ -77,14 +77,17 @@
         /* Hiển thị danh sách tên các trường của sheet động */
 
         .variable-dropdown {
-            max-height: 200px; /* Giới hạn chiều cao */
-            overflow-y: auto; /* Cuộn nếu dài */
+            max-height: 300px;
+            overflow-y: auto;
+            min-width: 300px; /* Tăng chiều rộng tối thiểu */
+            max-width: 600px; /* Cho phép rộng hơn */
             background: #fff;
             border: 1px solid #e0e0e0;
             border-radius: 4px;
             box-shadow: 0 2px 8px rgba(0,0,0,0.15);
             padding: 8px;
-            min-width: 200px;
+            position: absolute;
+            z-index: 1000; /* Đảm bảo hiển thị trên các phần tử khác */
         }
         .variable-dropdown h6 {
             font-size: 13px;
@@ -264,7 +267,7 @@
                                         <td>{{ $doc->name }}</td>
                                         <td>
                                             @if ($doc->is_selected)
-                                                <div class="extracted-vars-block" style="background:#f8f9fa;border:1px solid #e0e0e0;padding:10px 16px;border-radius:6px;min-width:220px;max-width:400px;">
+                                                <div class="extracted-vars-block" style="background:#f8f9fa;border:1px solid #e0e0e0;padding:10px 16px;border-radius:6px;min-width:220px;">
                                                     <strong>Biến đã trích xuất:</strong>
                                                     @if ($doc->variables->count())
                                                         <ul style="margin-bottom:0;">
@@ -480,7 +483,7 @@
                     url: '{{ route("excel_doc_mapping.getFields", ":variableId") }}'.replace(':variableId', variableId),
                     type: 'GET',
                     success: function(response) {
-                        var content = '<h5 class="variable-dropdown">Biến đã trích xuất</h5>';
+                        var content = '<h6 class="dropdown-header">Fields trích xuất:</h6>';
                         if (response.sheets && response.sheets.length > 0) {
                             response.sheets.forEach(function(sheet) {
                                 content += '<div class="sheet-item">';
@@ -492,13 +495,14 @@
                                 content += '</ul>';
                                 content += '</div>';
                             });
-                        } else {
-                            content = '<p class="text-muted">Không có sheet nào được tạo bảng.</p>';
-                        }
-                        $sheetList.html(content).addClass('active');
-                    },
-                    error: function(xhr) {
-                        $sheetList.html('<p class="text-danger">Lỗi: ' + (xhr.responseJSON?.error || 'Không thể tải danh sách sheet.') + '</p>').addClass('active');
+                        // Điều chỉnh max-height dựa trên số sheet
+                        var maxHeight = Math.min(100 + response.sheets.length * 80, 300); // 100px cơ bản + 80px mỗi sheet, tối đa 300px
+                        $sheetList.css('max-height', maxHeight + 'px');
+                    } else {
+                        content = '<p class="text-muted">Không có sheet nào được tạo bảng.</p>';
+                        $sheetList.css('max-height', '100px'); // Chiều cao nhỏ cho trường hợp rỗng
+                    }
+                    $sheetList.html(content).addClass('show');
                     }
                 });
             });
