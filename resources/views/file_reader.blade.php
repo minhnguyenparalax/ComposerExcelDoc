@@ -7,7 +7,6 @@
     <title>Quản lý file Word và Excel</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-    <!-- Sửa trong <style> (thêm CSS để giảm khoảng trắng) -->
     <style>
         .file-column {
             display: flex;
@@ -56,38 +55,37 @@
             border-radius: 6px;
             overflow: 
         }
-
-        /*Nút mapping*/
         .variable-item {
             display: flex;
             align-items: center;
-            gap: 8px; /* Khoảng cách giữa tên biến và icon */
+            gap: 8px;
         }
         .variable-item i {
-            font-size: 14px; /* Kích thước icon */
-            color: #0d6efd; /* Màu icon */
-            cursor: pointer; /* Con trỏ tay khi di chuột */
-            transition: all 0.3s ease; /* Hiệu ứng chuyển mượt */
+            font-size: 14px;
+            color: #0d6efd;
+            cursor: pointer;
+            transition: all 0.3s ease;
         }
         .variable-item i:hover {
-            color: #00f6e2ff; /* Màu vàng sáng khi hover */
-            text-shadow: 0 0 8px #00f6e2ff(255, 202, 40, 0.8); /* Hiệu ứng lóe sáng */
+            color: #00f6e2ff;
+            text-shadow: 0 0 8px rgba(255, 202, 40, 0.8);
         }
-
-        /* Hiển thị danh sách tên các trường của sheet động */
-
         .variable-dropdown {
             max-height: 300px;
             overflow-y: auto;
-            min-width: 300px; /* Tăng chiều rộng tối thiểu */
-            max-width: 600px; /* Cho phép rộng hơn */
+            min-width: 300px;
+            max-width: 600px;
             background: #fff;
             border: 1px solid #e0e0e0;
             border-radius: 4px;
             box-shadow: 0 2px 8px rgba(0,0,0,0.15);
             padding: 8px;
             position: absolute;
-            z-index: 1000; /* Đảm bảo hiển thị trên các phần tử khác */
+            z-index: 1000;
+            display: none;
+        }
+        .variable-dropdown.show {
+            display: block;
         }
         .variable-dropdown h6 {
             font-size: 13px;
@@ -103,47 +101,10 @@
             font-size: 12px;
             color: #555;
         }
-
-
-        .popover-btn {
-            padding: 2px 4px;
-            font-size: 12px;
-        }
-        .popover-btn i {
-            font-size: 10px;
-        }
-        .popover {
-            min-width: 250px;
-            max-width: 400px;
-            font-size: 15px;
-            padding: 10px 14px;
-            word-break: break-word;
-        }
-        .popover-header {
-            background-color: #f0f4ff;
-            color: #333;
-            font-size: 12px;
-            padding: 6px 10px;
-            border-bottom: 1px solid #e0e0e0;
-        }
-        .popover-body {
-            padding: 8px 10px;
-            color: #333;
-            line-height: 1.4;
-        }
-        .popover-body ul {
-            padding-left: 18px;
-            margin-bottom: 0;
-        }
-        .popover-body li {
-            margin-bottom: 4px;
-            font-size: 15px;
-        }
-        /* Thêm để giảm khoảng trắng */
         .row + .row {
             margin-top: 1rem;
         }
-        .card mb-3 {
+        .card.mb-3 {
             margin-bottom: 1rem !important;
         }
     </style>
@@ -166,219 +127,172 @@
             </div>
         @endif
 
-        
-    
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card mb-3">
+                    <div class="card-header">Đọc File Excel</div>
+                    <div class="card-body">
+                        <form action="{{ route('excel.addExcel') }}" method="POST">
+                            @csrf
+                            <div class="mb-3">
+                                <label for="excel_file_path" class="form-label">Nhập Đường Dẫn File Excel (.xlsx hoặc .xls)</label>
+                                <input type="text" class="form-control" id="excel_file_path" name="file_path" placeholder="Đường dẫn có thể có hoặc không có dấu ngoặc kép">
+                            </div>
+                            <button type="submit" class="btn btn-primary">Thêm Excel</button>
+                        </form>
 
-        <!-- Form đọc file Excel -->
-    <div class="row">
-        <div class="col-md-6">
-            <div class="card mb-3">
-                <div class="card-header">Đọc File Excel</div>
-                <div class="card-body">
-                    <form action="{{ route('excel.addExcel') }}" method="POST">
-                        @csrf
-                        <div class="mb-3">
-                            <label for="excel_file_path" class="form-label">Nhập Đường Dẫn File Excel (.xlsx hoặc .xls)</label>
-                            <input type="text" class="form-control" id="excel_file_path" name="file_path" placeholder="Đường dẫn có thể có hoặc không có dấu ngoặc kép">
-                        </div>
-                        <button type="submit" class="btn btn-primary">Thêm Excel</button>
-                    </form>
-
-                    @if ($excelFiles->isNotEmpty())
-                        <h5 class="mt-4">Danh Sách Excel</h5>
-                        <table class="table table-bordered">
-                            <thead>
-                                <tr>
-                                    <th>File</th>
-                                    <th>Sheets</th>
-                                    <th>Hành động</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach ($excelFiles as $file)
-                                    <tr>
-                                        <td class="file-column">{{ $file->name }}</td>
-                                        <td>
-                                            @foreach ($file->sheets as $sheet)
-                                                <div class="file-column">
-                                                    <a href="#" class="btn btn-sm btn-info view-sheet" data-file-id="{{ $file->id }}" data-sheet-id="{{ $sheet->id }}" data-sheet-name="{{ $sheet->name }}" data-bs-toggle="modal" data-bs-target="#excelModal">
-                                                        Xem
-                                                    </a>
-                                                    <a href="{{ route('excel.selectSheet', ['fileId' => $file->id, 'sheetId' => $sheet->id]) }}" class="btn btn-sm btn-success">
-                                                        Chọn
-                                                    </a>
-                                                    <span>{{ $sheet->name }}</span>
-                                                </div>
-                                            @endforeach
-                                        </td>
-                                        <td>
-                                            <form action="{{ route('excel.removeExcel', ['id' => $file->id]) }}" method="POST">
-                                                @csrf
-                                                @method('DELETE')
-                                                <button type="submit" class="btn btn-sm btn-danger">Xóa Excel</button>
-                                            </form>
-                                        </td>
-                                    </tr>
-                                @endforeach
-                            </tbody>
-                        </table>
-                    @else
-                        <p>Không có file Excel nào.</p>
-                    @endif
-                </div>
-            </div>
-        </div>
-
-        <!-- Sửa section đầu tiên (form Thêm File Word và Đọc File Excel) -->
-
-        <!-- Form thêm file Word -->
-        <div class="col-md-6">
-            <div class="card mb-3">
-                <div class="card-header">Thêm File Word</div>
-                <div class="card-body">
-                    <form action="{{ route('doc.addDoc') }}" method="POST">
-                        @csrf
-                        <div class="mb-3">
-                            <label for="file_path" class="form-label">Nhập Đường Dẫn File Word (.doc hoặc .docx)</label>
-                            <input type="text" class="form-control" id="file_path" name="file_path" placeholder="Đường dẫn có thể có hoặc không có dấu ngoặc kép" required>
-                        </div>
-                        <button type="submit" class="btn btn-primary">Thêm File Word</button>
-                    </form>
-                </div>
-            </div>
-
-            <!-- Sửa section Danh sách file Word (popover và nút Xem nội dung) -->
-
-        <div class="card-body h6">
-            <div class="card mb-3">
-                <div class="card-header">Danh sách file Word</div>
-                <div class="card-body">
-                    @if ($docFiles->isNotEmpty())
-                        <table class="table table-bordered">
-                            <thead>
-                                <tr>
-                                    <th>File Name</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach ($docFiles as $doc)
-                                    <tr>
-                                        <td>{{ $doc->name }}</td>
-                                        <td>
-                                            @if ($doc->is_selected)
-                                                <div class="extracted-vars-block" style="background:#f8f9fa;border:1px solid #e0e0e0;padding:10px 16px;border-radius:6px;min-width:220px;">
-                                                    <strong>Biến đã trích xuất:</strong>
-                                                    @if ($doc->variables->count())
-                                                        <ul style="margin-bottom:0;">
-                                                            @foreach ($doc->variables as $variable)
-                                                                <li class="variable-item dropdown">
-                                                                    {{ $variable->var_name }}
-                                                                    <i class="fa-solid fa-link mapping-icon" title="Ánh xạ variable và field" data-variable-id="{{ $variable->id }}" data-bs-toggle="dropdown"></i>
-                                                                    <div class="dropdown-menu variable-dropdown" id="sheet-list-{{ $variable->id }}"></div>
-                                                                </li>
-                                                            @endforeach
-                                                        </ul>
-                                                    @else
-                                                        <div class="text-muted">Không tìm thấy biến nào trong file này.</div>
-                                                    @endif
-                                                </div>
-                                            @else
-                                                <button class="btn btn-primary select-doc" data-doc-id="{{ $doc->id }}" style="font-weight:600;min-width:120px;">Trích xuất</button>
-                                            @endif
-                                            <a href="#" class="btn btn-sm btn-secondary view-doc" data-doc-id="{{ $doc->id }}" data-doc-name="{{ $doc->name }}" data-bs-toggle="modal" data-bs-target="#docModal">Xem nội dung</a>
-                                            <form action="{{ route('doc.removeDoc') }}" method="POST" style="display: inline-block;">
-                                                @csrf
-                                                <input type="hidden" name="doc_id" value="{{ $doc->id }}">
-                                                <button type="submit" class="btn btn-sm btn-danger">Xóa</button>
-                                            </form>
-                                        </td>
-                                    </tr>
-                                @endforeach
-                            </tbody>
-                        </table>
-                    @else
-                        <p>Chưa có file Word nào.</p>
-                    @endif
-                </div>
-            </div>
-         </div>
-        </div>
-    </div>
-
-        
-
-    
-
-        <!-- Giữ nguyên section Danh sách Sheet đã được tạo bảng -->
-    <div class="row">
-        <div class="col-md-6">
-            <div class="card mb-3">
-                <div class="card-header">Danh sách Sheet đã được tạo bảng</div>
-                
-                <div class="card-body">
-                    @if ($excelFilesWithCreatedSheets->isNotEmpty())
-                        
-                        @foreach ($excelFilesWithCreatedSheets as $excelFile)
-
-                            <h6>File: {{ $excelFile->name }}</h6>
+                        @if ($excelFiles->isNotEmpty())
+                            <h5 class="mt-4">Danh Sách Excel</h5>
                             <table class="table table-bordered">
                                 <thead>
                                     <tr>
-                                        <th>Sheet Name</th>
-                                        <th>Table Name</th>
+                                        <th>File</th>
+                                        <th>Sheets</th>
+                                        <th>Hành động</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    @foreach ($excelFile->sheets as $sheet)
+                                    @foreach ($excelFiles as $file)
                                         <tr>
-                                            <td>{{ $sheet->name }}</td>
-                                            <td>{{ $sheet->table_name }}</td>
+                                            <td class="file-column">{{ $file->name }}</td>
+                                            <td>
+                                                @foreach ($file->sheets as $sheet)
+                                                    <div class="file-column">
+                                                        <a href="#" class="btn btn-sm btn-info view-sheet" data-file-id="{{ $file->id }}" data-sheet-id="{{ $sheet->id }}" data-sheet-name="{{ $sheet->name }}" data-bs-toggle="modal" data-bs-target="#excelModal">
+                                                            Xem
+                                                        </a>
+                                                        <a href="{{ route('excel.selectSheet', ['fileId' => $file->id, 'sheetId' => $sheet->id]) }}" class="btn btn-sm btn-success">
+                                                            Chọn
+                                                        </a>
+                                                        <span>{{ $sheet->name }}</span>
+                                                    </div>
+                                                @endforeach
+                                            </td>
+                                            <td>
+                                                <form action="{{ route('excel.removeExcel', ['id' => $file->id]) }}" method="POST">
+                                                    @csrf
+                                                    @method('DELETE')
+                                                    <button type="submit" class="btn btn-sm btn-danger">Xóa Excel</button>
+                                                </form>
+                                            </td>
                                         </tr>
                                     @endforeach
                                 </tbody>
                             </table>
-                        @endforeach
-                    @else
-                        <p>Chưa có sheet nào được tạo bảng.</p>
-                    @endif
+                        @else
+                            <p>Không có file Excel nào.</p>
+                        @endif
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-6">
+                <div class="card mb-3">
+                    <div class="card-header">Thêm File Word</div>
+                    <div class="card-body">
+                        <form action="{{ route('doc.addDoc') }}" method="POST">
+                            @csrf
+                            <div class="mb-3">
+                                <label for="file_path" class="form-label">Nhập Đường Dẫn File Word (.doc hoặc .docx)</label>
+                                <input type="text" class="form-control" id="file_path" name="file_path" placeholder="Đường dẫn có thể có hoặc không có dấu ngoặc kép" required>
+                            </div>
+                            <button type="submit" class="btn btn-primary">Thêm File Word</button>
+                        </form>
+                    </div>
+                </div>
+
+                <div class="card mb-3">
+                    <div class="card-header">Danh sách file Word</div>
+                    <div class="card-body">
+                        @if ($docFiles->isNotEmpty())
+                            <table class="table table-bordered">
+                                <thead>
+                                    <tr>
+                                        <th>File Name</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach ($docFiles as $doc)
+                                        <tr>
+                                            <td>{{ $doc->name }}</td>
+                                            <td>
+                                                @if ($doc->is_selected)
+                                                    <div class="extracted-vars-block" style="background:#f8f9fa;border:1px solid #e0e0e0;padding:10px 16px;border-radius:6px;min-width:220px;">
+                                                        <strong>Biến đã trích xuất:</strong>
+                                                        @if ($doc->variables->count())
+                                                            <ul style="margin-bottom:0;">
+                                                                @foreach ($doc->variables as $variable)
+                                                                    <li class="variable-item dropdown">
+                                                                        {{ $variable->var_name }}
+                                                                        <i class="fa-solid fa-link mapping-icon" title="Ánh xạ variable và field" data-variable-id="{{ $variable->id }}"></i>
+                                                                        <div class="dropdown-menu variable-dropdown" id="sheet-list-{{ $variable->id }}"></div>
+                                                                    </li>
+                                                                @endforeach
+                                                            </ul>
+                                                        @else
+                                                            <div class="text-muted">Không tìm thấy biến nào trong file này.</div>
+                                                        @endif
+                                                    </div>
+                                                @else
+                                                    <button class="btn btn-primary select-doc" data-doc-id="{{ $doc->id }}" style="font-weight:600;min-width:120px;">Trích xuất</button>
+                                                @endif
+                                                <a href="#" class="btn btn-sm btn-secondary view-doc" data-doc-id="{{ $doc->id }}" data-doc-name="{{ $doc->name }}" data-bs-toggle="modal" data-bs-target="#docModal">Xem nội dung</a>
+                                                <form action="{{ route('doc.removeDoc') }}" method="POST" style="display: inline-block;">
+                                                    @csrf
+                                                    <input type="hidden" name="doc_id" value="{{ $doc->id }}">
+                                                    <button type="submit" class="btn btn-sm btn-danger">Xóa</button>
+                                                </form>
+                                            </td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        @else
+                            <p>Chưa có file Word nào.</p>
+                        @endif
+                    </div>
                 </div>
             </div>
         </div>
 
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card mb-3">
+                    <div class="card-header">Danh sách Sheet đã được tạo bảng</div>
+                    <div class="card-body">
+                        @if ($excelFilesWithCreatedSheets->isNotEmpty())
+                            @foreach ($excelFilesWithCreatedSheets as $excelFile)
+                                <h6>File: {{ $excelFile->name }}</h6>
+                                <table class="table table-bordered">
+                                    <thead>
+                                        <tr>
+                                            <th>Sheet Name</th>
+                                            <th>Table Name</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach ($excelFile->sheets as $sheet)
+                                            <tr>
+                                                <td>{{ $sheet->name }}</td>
+                                                <td>{{ $sheet->table_name }}</td>
+                                            </tr>
+                                        @endforeach
+                                    </tbody>
+                                </table>
+                            @endforeach
+                        @else
+                            <p>Chưa có sheet nào được tạo bảng.</p>
+                        @endif
+                    </div>
+                </div>
+            </div>
+        </div>
 
-        
-
-    </div>
-    </div>
-
-    
-
-    
-
-
-        <!-- Sửa script (thêm AJAX cho selectDoc và initPopovers) -->
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-
-    
-    <script>
+        <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+        <script>
         $(document).ready(function() {
-            // Hàm khởi tạo popover
-            function initPopovers() {
-                var popoverTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="popover"]'));
-                popoverTriggerList.forEach(function (popoverTriggerEl) {
-                    new bootstrap.Popover(popoverTriggerEl, {
-                        trigger: 'click',
-                        placement: 'top',
-                        customClass: 'custom-popover'
-                    });
-                });
-            }
-
-            // Gọi khởi tạo popover khi tải trang
-            initPopovers();
-
             // Xử lý nút Xem cho Doc
             $('.view-doc').click(function(e) {
                 e.preventDefault();
@@ -398,55 +312,7 @@
                 });
             });
 
-            // Xử lý nút Chọn Doc
-            $(document).on('click', '.select-doc', function(e) {
-                e.preventDefault();
-                var docId = $(this).data('doc-id');
-                var $button = $(this);
-                $button.prop('disabled', true).text('Đang trích xuất...');
-                $.ajax({
-                    url: '{{ route("doc.selectDoc", ":docId") }}'.replace(':docId', docId),
-                    type: 'GET',
-                    success: function(response) {
-                        var block = $('<div class="extracted-vars-block" style="background:#f8f9fa;border:1px solid #e0e0e0;padding:10px 16px;border-radius:6px;min-width:220px;max-width:400px;"></div>');
-                        block.append('<strong>Biến đã trích xuất:</strong>');
-                        if (Array.isArray(response.variables) && response.variables.length > 0) {
-                            var ul = $('<ul style="margin-bottom:0;"></ul>');
-                            response.variables.forEach(function(v) { ul.append('<li>' + v + '</li>'); });
-                            block.append(ul);
-                        } else {
-                            block.append('<div class="text-muted">Không tìm thấy biến nào trong file này.</div>');
-                        }
-                        $button.replaceWith(block);
-                        var alert = '<div class="alert alert-success alert-dismissible fade show" role="alert">' +
-                                    '<h5>Thông báo</h5><p>Đã trích xuất biến cho tài liệu "' + response.doc_name + '".</p>' +
-                                    '<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button></div>';
-                        $('.container.mt-4').prepend(alert);
-                    },
-                    error: function(xhr) {
-                        $button.prop('disabled', false).text('Trích xuất');
-                        var alert = '<div class="alert alert-danger alert-dismissible fade show" role="alert">' +
-                                    '<h5>Lỗi</h5><p>' + (xhr.responseJSON?.error || 'Không thể trích xuất biến.') + '</p>' +
-                                    '<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button></div>';
-                        $('.container.mt-4').prepend(alert);
-                    }
-                });
-            });
-
-            
-
-            // Khởi tạo popover
-            var popoverTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="popover"]'));
-            popoverTriggerList.forEach(function (popoverTriggerEl) {
-                new bootstrap.Popover(popoverTriggerEl, {
-                    trigger: 'click',
-                    placement: 'top',
-                    customClass: 'custom-popover'
-                });
-            });
-        });
-
-                // Xử lý nút Xem cho Excel
+            // Xử lý nút Xem cho Excel
             $('.view-sheet').click(function(e) {
                 e.preventDefault();
                 var fileId = $(this).data('file-id');
@@ -466,69 +332,115 @@
                 });
             });
 
-            // Xử lý click vào icon mapping
-            // Xử lý click vào icon mapping
-            $(document).on('click', '.mapping-icon', function() {
-                var $icon = $(this);
-                var variableId = $icon.data('variable-id');
-                var $sheetList = $('#sheet-list-' + variableId);
-                
-                // Toggle hiển thị/ẩn danh sách
-                if ($sheetList.hasClass('active')) {
-                    $sheetList.removeClass('active').empty();
-                    return;
-                }
+            // Hàm khởi tạo sự kiện cho các icon mapping
+            function initMappingIcons() {
+                console.log('Initializing mapping icons...'); // Debug
+                $('.mapping-icon').off('click').on('click', function() {
+                    var $icon = $(this);
+                    var variableId = $icon.data('variable-id');
+                    var $sheetList = $('#sheet-list-' + variableId);
+                    console.log('Clicked mapping icon with variableId:', variableId); // Debug
+
+                    // Toggle hiển thị/ẩn danh sách
+                    if ($sheetList.hasClass('show')) {
+                        $sheetList.removeClass('show').empty();
+                        return;
+                    }
+
+                    // Gọi AJAX để lấy danh sách fields
+                    $.ajax({
+                        url: '{{ route("excel_doc_mapping.getFields", ":variableId") }}'.replace(':variableId', variableId),
+                        type: 'GET',
+                        success: function(response) {
+                            console.log('Response from getFields:', response); // Debug
+                            var content = '<h6 class="dropdown-header">Fields trích xuất:</h6>';
+                            if (response.sheets && response.sheets.length > 0) {
+                                response.sheets.forEach(function(sheet) {
+                                    content += '<div class="sheet-item">';
+                                    content += '<h6>File: ' + sheet.excel_file + ' - Sheet: ' + sheet.sheet_name + '</h6>';
+                                    content += '<ul>';
+                                    sheet.columns.forEach(function(column) {
+                                        content += '<li>' + column + '</li>';
+                                    });
+                                    content += '</ul>';
+                                    content += '</div>';
+                                });
+                                var maxHeight = Math.min(100 + response.sheets.length * 80, 300);
+                                $sheetList.css('max-height', maxHeight + 'px');
+                            } else {
+                                content = '<p class="text-muted">Không có sheet nào được tạo bảng.</p>';
+                                $sheetList.css('max-height', '100px');
+                            }
+                            $sheetList.html(content).addClass('show');
+                        },
+                        error: function(xhr) {
+                            console.error('Error in getFields:', xhr.responseJSON); // Debug
+                            var errorMsg = xhr.responseJSON?.error || 'Không thể tải danh sách fields.';
+                            $sheetList.html('<p class="text-danger">' + errorMsg + '</p>').addClass('show');
+                        }
+                    });
+                });
+            }
+
+            // Xử lý nút Chọn Doc
+            $(document).on('click', '.select-doc', function(e) {
+                e.preventDefault();
+                var docId = $(this).data('doc-id');
+                var $button = $(this);
+                $button.prop('disabled', true).text('Đang trích xuất...');
 
                 $.ajax({
-                    url: '{{ route("excel_doc_mapping.getFields", ":variableId") }}'.replace(':variableId', variableId),
+                    url: '{{ route("doc.selectDoc", ":docId") }}'.replace(':docId', docId),
                     type: 'GET',
                     success: function(response) {
-                        var content = '<h6 class="dropdown-header">Fields trích xuất:</h6>';
-                        if (response.sheets && response.sheets.length > 0) {
-                            response.sheets.forEach(function(sheet) {
-                                content += '<div class="sheet-item">';
-                                content += '<h6>File: ' + sheet.excel_file + ' - Sheet: ' + sheet.sheet_name + '</h6>';
-                                content += '<ul>';
-                                sheet.columns.forEach(function(column) {
-                                    content += '<li>' + column + '</li>';
-                                });
-                                content += '</ul>';
-                                content += '</div>';
-                            });
-                        // Điều chỉnh max-height dựa trên số sheet
-                        var maxHeight = Math.min(100 + response.sheets.length * 80, 300); // 100px cơ bản + 80px mỗi sheet, tối đa 300px
-                        $sheetList.css('max-height', maxHeight + 'px');
-                    } else {
-                        content = '<p class="text-muted">Không có sheet nào được tạo bảng.</p>';
-                        $sheetList.css('max-height', '100px'); // Chiều cao nhỏ cho trường hợp rỗng
-                    }
-                    $sheetList.html(content).addClass('show');
+                        console.log('Response from selectDoc:', response); // Debug
+                        // Reload lần 1 để hiển thị thông báo và khối biến
+                        window.location.reload();
+                        // Reload lần 2 sau 1 giây để hiển thị nút mapping
+                        setTimeout(function() {
+                            console.log('Triggering second reload...'); // Debug
+                            window.location.reload();
+                        }, 1000);
+                    },
+                    error: function(xhr) {
+                        console.error('Error in selectDoc:', xhr.responseJSON); // Debug
+                        $button.prop('disabled', false).text('Trích xuất');
+                        var alert = '<div class="alert alert-danger alert-dismissible fade show" role="alert">' +
+                                    '<h5>Lỗi</h5><p>' + (xhr.responseJSON?.error || 'Không thể trích xuất biến.') + '</p>' +
+                                    '<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button></div>';
+                        $('.container.mt-4').prepend(alert);
                     }
                 });
             });
 
-        
-        
-    </script>
+            // Khởi tạo sự kiện cho các icon mapping khi tải trang
+            initMappingIcons();
 
-    
+            // Đóng dropdown khi click ra ngoài
+            $(document).on('click', function(e) {
+                if (!$(e.target).closest('.mapping-icon, .variable-dropdown').length) {
+                    $('.variable-dropdown.show').removeClass('show').empty();
+                }
+            });
+        });
+        </script>
 
-    <!-- Modal xem nội dung file Word -->
-    <div class="modal fade" id="docModal" tabindex="-1" aria-labelledby="docModalLabel" aria-hidden="true">
-      <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title" id="docModalLabel">Nội dung File Word</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-          </div>
-          <div class="modal-body" id="docContent">
-            <div class="text-center text-muted">Đang tải nội dung...</div>
-          </div>
+        <!-- Modal xem nội dung file Word -->
+        <div class="modal fade" id="docModal" tabindex="-1" aria-labelledby="docModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="docModalLabel">Nội dung File Word</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body" id="docContent">
+                        <div class="text-center text-muted">Đang tải nội dung...</div>
+                    </div>
+                </div>
+            </div>
         </div>
-      </div>
-    </div>
 
-    <!-- Modal cho nội dung Excel -->
+        <!-- Modal cho nội dung Excel -->
         <div class="modal fade" id="excelModal" tabindex="-1" aria-labelledby="excelModalLabel" aria-hidden="true">
             <div class="modal-dialog modal-xl">
                 <div class="modal-content">
@@ -546,14 +458,6 @@
             </div>
         </div>
     </div>
-
-    <!-- Modal cho danh sách sheet và field -->
-    <!--Đang tạm xóa>
-
-    
-
 </body>
 </html>
 ```
-
-
