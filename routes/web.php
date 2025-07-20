@@ -21,3 +21,5 @@ Route::post('/excel/create-table-and-insert-data/{fileId}/{sheetId}', [ExcelCont
 Route::get('/doc/select/{docId}', [App\Http\Controllers\DocController::class, 'selectDoc'])->name('doc.selectDoc');
 Route::get('/mapping/fields/{variableId}', [ExcelDocMappingController::class, 'getFields'])->name('excel_doc_mapping.getFields');
 
+// Lưu ánh xạ giữa biến Word và cột Excel
+Route::post('/mapping/store', [ExcelDocMappingController::class, 'storeMapping'])->name('excel_doc_mapping.storeMapping');
