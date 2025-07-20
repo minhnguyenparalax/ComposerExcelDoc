@@ -22,7 +22,9 @@ class ExcelDocMappingController extends Controller
             foreach ($excelFile->sheets as $sheet) {
                 $columns = Schema::getColumnListing($sheet->table_name);
                 $columns = array_filter($columns, fn($column) => $column !== 'id' && $column !== 'created_at' && $column !== 'updated_at');
+
                 $originalHeaders = json_decode($sheet->original_headers, true, 512, JSON_UNESCAPED_UNICODE) ?? [];
+                //JSON_UNESCAPED_UNICODE để nhận diên chữ có dấu
                 $mappedColumns = [];
                 foreach ($columns as $index => $column) {
                     $mappedColumns[] = $originalHeaders[$index] ?? $column; // Dùng tên gốc nếu có
