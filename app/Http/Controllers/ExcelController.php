@@ -263,6 +263,7 @@ class ExcelController extends Controller
                     $sheet->is_table_created = true;
                     $headers = array_map(fn($header) => preg_replace('/[\r\n]+/', ' ', trim($header)), $headers);
                     $sheet->original_headers = json_encode($headers, JSON_UNESCAPED_UNICODE); // Lưu tiêu đề gốc
+                    //JSON_UNESCAPED_UNICODE để nhận diên chữ có dấu
                     $sheet->save();
                 }
 
