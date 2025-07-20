@@ -291,6 +291,9 @@
 
         <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
         <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+
+
         <script>
         $(document).ready(function() {
             // Xử lý nút Xem cho Doc
@@ -338,6 +341,7 @@
                 $('.mapping-icon').off('click').on('click', function() {
                     var $icon = $(this);
                     var variableId = $icon.data('variable-id');
+                    var varName = $icon.parent().text().trim().split(' ')[0]; // Lấy var_name từ text của li
                     var $sheetList = $('#sheet-list-' + variableId);
                     console.log('Clicked mapping icon with variableId:', variableId); // Debug
 
@@ -347,7 +351,7 @@
                         return;
                     }
 
-                    // Gọi AJAX để lấy danh sách fields
+                    // Gọi AJAX để lấy danh sách fields từ các sheet Excel đã tạo bảng
                     $.ajax({
                         url: '{{ route("excel_doc_mapping.getFields", ":variableId") }}'.replace(':variableId', variableId),
                         type: 'GET',
@@ -359,8 +363,15 @@
                                     content += '<div class="sheet-item">';
                                     content += '<h6>File: ' + sheet.excel_file + ' - Sheet: ' + sheet.sheet_name + '</h6>';
                                     content += '<ul>';
+                                    // Tạo danh sách các field, mỗi field là một link có thể click để ánh xạ
                                     sheet.columns.forEach(function(column) {
-                                        content += '<li>' + column + '</li>';
+                                        content += '<li><a href="#" class="map-field" ' +
+                                            'data-variable-id="' + variableId + '" ' +
+                                            'data-var-name="' + varName + '" ' +
+                                            'data-sheet-id="' + sheet.sheet_id + '" ' +
+                                            'data-table-name="' + sheet.table_name + '" ' +
+                                            'data-column-index="' + column.index + '" ' +
+                                            'data-column-name="' + column.name + '">' + column.name + '</a></li>';
                                     });
                                     content += '</ul>';
                                     content += '</div>';
@@ -372,6 +383,41 @@
                                 $sheetList.css('max-height', '100px');
                             }
                             $sheetList.html(content).addClass('show');
+
+                            // Xử lý sự kiện click vào field để lưu ánh xạ
+                            $('.map-field').off('click').on('click', function(e) {
+                                e.preventDefault();
+                                var variableId = $(this).data('variable-id');
+                                var varName = $(this).data('var-name');
+                                var sheetId = $(this).data('sheet-id');
+                                var tableName = $(this).data('table-name');
+                                var columnIndex = $(this).data('column-index');
+                                var columnName = $(this).data('column-name');
+
+                                // Gửi yêu cầu AJAX để lưu ánh xạ vào bảng mappings
+                                $.ajax({
+                                    url: '{{ route("excel_doc_mapping.storeMapping") }}',
+                                    type: 'POST',
+                                    data: {
+                                        variable_id: variableId,
+                                        var_name: varName,
+                                        excel_sheet_id: sheetId,
+                                        table_name: tableName,
+                                        original_headers_index: columnIndex,
+                                        field: columnName,
+                                        _token: '{{ csrf_token() }}'
+                                    },
+                                    success: function(response) {
+                                        alert(response.success || 'Ánh xạ thành công!');
+                                        $sheetList.removeClass('show').empty();
+                                        // Hiển thị tên field đã ánh xạ bên cạnh biến
+                                        $icon.parent().append('<span class="mapped-field text-success ms-2">' + columnName + '</span>');
+                                    },
+                                    error: function(xhr) {
+                                        alert(xhr.responseJSON?.error || 'Lỗi khi lưu ánh xạ.');
+                                    }
+                                });
+                            });
                         },
                         error: function(xhr) {
                             console.error('Error in getFields:', xhr.responseJSON); // Debug
@@ -424,6 +470,11 @@
             });
         });
         </script>
+
+
+
+
+
 
         <!-- Modal xem nội dung file Word -->
         <div class="modal fade" id="docModal" tabindex="-1" aria-labelledby="docModalLabel" aria-hidden="true">
