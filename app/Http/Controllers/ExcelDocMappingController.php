@@ -106,5 +106,35 @@ class ExcelDocMappingController extends Controller
         }
     }
 
+    // Thêm: Xóa ánh xạ khỏi bảng mappings dựa trên doc_variable_id
+    public function deleteMapping(Request $request)
+    {
+        // Kiểm tra dữ liệu đầu vào
+        $request->validate([
+            'variable_id' => 'required|exists:mappings,doc_variable_id',
+        ], [
+            'variable_id.exists' => 'Không tìm thấy ánh xạ cho biến này.',
+        ]);
+
+        try {
+            // Xóa bản ghi ánh xạ từ bảng mappings
+            $deleted = Mapping::where('doc_variable_id', $request->variable_id)->delete();
+
+            if ($deleted) {
+                // Trả về thông báo thành công
+                return response()->json(['success' => 'Xóa ánh xạ thành công.']);
+            } else {
+                return response()->json(['error' => 'Không tìm thấy ánh xạ để xóa.'], 404);
+            }
+        } catch (\Exception $e) {
+            // Ghi log lỗi để debug
+            Log::error('Lỗi khi xóa ánh xạ: ' . $e->getMessage(), [
+                'request' => $request->all(),
+                'variable_id' => $request->variable_id
+            ]);
+            return response()->json(['error' => 'Không thể xóa ánh xạ: ' . $e->getMessage()], 500);
+        }
+    }
+
 
 }
