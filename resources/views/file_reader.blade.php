@@ -363,15 +363,17 @@
                                     content += '<div class="sheet-item">';
                                     content += '<h6>File: ' + sheet.excel_file + ' - Sheet: ' + sheet.sheet_name + '</h6>';
                                     content += '<ul>';
-                                    // Tạo danh sách các field, mỗi field là một link có thể click để ánh xạ
-                                    sheet.columns.forEach(function(column) {
-                                        content += '<li><a href="#" class="map-field" ' +
-                                            'data-variable-id="' + variableId + '" ' +
-                                            'data-var-name="' + varName + '" ' +
-                                            'data-sheet-id="' + sheet.sheet_id + '" ' +
-                                            'data-table-name="' + sheet.table_name + '" ' +
-                                            'data-column-index="' + column.index + '" ' +
-                                            'data-column-name="' + column.name + '">' + column.name + '</a></li>';
+                                    // Sửa: Duyệt original_headers thay vì columns, chỉ hiển thị field không rỗng
+                                    sheet.original_headers.forEach(function(header, index) {
+                                        if (header && header.trim() !== '') { // Chỉ thêm header không rỗng
+                                            content += '<li><a href="#" class="map-field" ' +
+                                                'data-variable-id="' + variableId + '" ' +
+                                                'data-var-name="' + varName + '" ' +
+                                                'data-sheet-id="' + sheet.sheet_id + '" ' +
+                                                'data-table-name="' + sheet.table_name + '" ' +
+                                                'data-column-index="' + index + '" ' +
+                                                'data-column-name="' + header + '">' + header + '</a></li>';
+                                        }
                                     });
                                     content += '</ul>';
                                     content += '</div>';

@@ -12,6 +12,7 @@ use App\Models\Mapping;
 class ExcelDocMappingController extends Controller
 {
     // Lấy danh sách các cột từ các sheet Excel đã tạo bảng để hiển thị trong dropdown ánh xạ
+    // Lấy danh sách các cột từ các sheet Excel đã tạo bảng để hiển thị trong dropdown ánh xạ
     public function getFields($variableId)
     {
         $sheets = [];
@@ -29,7 +30,7 @@ class ExcelDocMappingController extends Controller
                 $mappedColumns = [];
                 foreach ($columns as $index => $column) {
                     $mappedColumns[] = [
-                        'name' => $originalHeaders[$index] ?? $column, // Tên cột gốc hoặc slug
+                        'name' => $originalHeaders[$index] ?? $column, // Dùng tên gốc nếu có
                         'index' => $index, // Chỉ số của cột trong original_headers
                     ];
                 }
@@ -39,6 +40,8 @@ class ExcelDocMappingController extends Controller
                     'sheet_id' => $sheet->id, // ID của sheet để lưu vào original_headers_id
                     'table_name' => $sheet->table_name, // Tên bảng động
                     'columns' => $mappedColumns, // Danh sách cột với tên và chỉ số
+                    // Sửa: Thêm original_headers để JavaScript duyệt trực tiếp
+                    'original_headers' => $originalHeaders,
                 ];
             }
         }
