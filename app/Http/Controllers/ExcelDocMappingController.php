@@ -7,6 +7,7 @@ use App\Models\Excelfiles;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use App\Models\Mapping;
 
 class ExcelDocMappingController extends Controller
 {
@@ -55,27 +56,34 @@ class ExcelDocMappingController extends Controller
         // Kiểm tra dữ liệu đầu vào
         $request->validate([
             'variable_id' => 'required|exists:doc_variables,id',
-            'var_name' => 'required|string',
             'excel_sheet_id' => 'required|exists:excel_sheets,id',
             'table_name' => 'required|string',
             'original_headers_index' => 'required|integer',
             'field' => 'required|string',
+        ], [
+            'variable_id.exists' => 'Biến không tồn tại trong bảng doc_variables.',
+            'excel_sheet_id.exists' => 'Sheet không tồn tại trong bảng excel_sheets.',
         ]);
 
         try {
             // Kiểm tra xem biến đã được ánh xạ trước đó chưa
-            $existingMapping = \App\Models\Mapping::where('doc_variable_id', $request->variable_id)->first();
+            $existingMapping = Mapping::where('doc_variable_id', $request->variable_id)->first();
             if ($existingMapping) {
+                Log::warning('Biến đã được ánh xạ: ' . $request->variable_id);
                 return response()->json(['error' => 'Biến này đã được ánh xạ.'], 400);
             }
 
-            // Tạo chuỗi fields_mapping từ var_name và field
-            $fieldsMapping = $request->var_name . ' & ' . $request->field;
+            // Sửa: Lấy var_name đầy đủ từ bảng doc_variables thay vì từ request
+            $variable = DocVariable::findOrFail($request->variable_id);
+            $varName = $variable->var_name; // Đảm bảo lấy var_name đầy đủ (ví dụ: Tên DN SMEs)
 
-            // Tạo bản ghi ánh xạ mới trong bảng mappings
-            \App\Models\Mapping::create([
+            // Sửa: Tạo chuỗi fields_mapping từ var_name của doc_variables và field từ request
+            $fieldsMapping = $varName . ' & ' . $request->field;
+
+            // Sửa: Lưu var_name từ doc_variables vào bảng mappings
+            Mapping::create([
                 'doc_variable_id' => $request->variable_id,
-                'var_name' => $request->var_name,
+                'var_name' => $varName, // Sử dụng var_name từ doc_variables
                 'table_name' => $request->table_name,
                 'original_headers_id' => $request->excel_sheet_id,
                 'original_headers_index' => $request->original_headers_index,
@@ -86,8 +94,11 @@ class ExcelDocMappingController extends Controller
             // Trả về thông báo thành công
             return response()->json(['success' => 'Ánh xạ đã được lưu thành công.']);
         } catch (\Exception $e) {
-            // Ghi log lỗi và trả về thông báo lỗi
-            \Illuminate\Support\Facades\Log::error('Lỗi khi lưu ánh xạ: ' . $e->getMessage());
+            // Ghi log lỗi để debug
+        Log::error('Lỗi khi lưu ánh xạ: ' . $e->getMessage(), [
+                'request' => $request->all(),
+                'variable_id' => $request->variable_id
+            ]);
             return response()->json(['error' => 'Không thể lưu ánh xạ: ' . $e->getMessage()], 500);
         }
     }
