@@ -218,14 +218,25 @@
                                             <td>{{ $doc->name }}</td>
                                             <td>
                                                 @if ($doc->is_selected)
-                                                    <div class="extracted-vars-block" style="background:#f8f9fa;border:1px solid #e0e0e0;padding:10px 16px;border-radius:6px;min-width:220px;">
+                                                    <div>
                                                         <strong>Biến đã trích xuất:</strong>
                                                         @if ($doc->variables->count())
                                                             <ul style="margin-bottom:0;">
                                                                 @foreach ($doc->variables as $variable)
                                                                     <li class="variable-item dropdown">
+                                                                        <!-- Sửa: Hiển thị var_name và field ánh xạ từ bảng mappings với định dạng giống JavaScript -->
                                                                         {{ $variable->var_name }}
-                                                                        <i class="fa-solid fa-link mapping-icon" title="Ánh xạ variable và field" data-variable-id="{{ $variable->id }}"></i>
+                                                                        @php
+                                                                            // Truy vấn bảng mappings để lấy field ánh xạ cho biến
+                                                                            $mapping = \App\Models\Mapping::where('doc_variable_id', $variable->id)->first();
+                                                                            // Nếu có ánh xạ, hiển thị field với lớp CSS text-success ms-2 để đồng bộ hiệu ứng
+                                                                            if ($mapping && $mapping->field) {
+                                                                                echo '<span class="mapped-field text-success ms-2"> & ' . htmlspecialchars($mapping->field, ENT_QUOTES, 'UTF-8') . '</span>';
+                                                                                // Thêm: Hiển thị nút Delete chỉ khi có ánh xạ
+                                                                                echo '<i class="fa-solid fa-trash delete-mapping ms-2" title="Xóa ánh xạ" data-variable-id="' . $variable->id . '"></i>';
+                                                                            }
+                                                                        @endphp
+                                                                        <i class="fa-solid fa-link mapping-icon" title="Ánh xạ variable và field" data-variable-id="{{ $variable->id }}" data-var-name="{{ $variable->var_name }}"></i>
                                                                         <div class="dropdown-menu variable-dropdown" id="sheet-list-{{ $variable->id }}"></div>
                                                                     </li>
                                                                 @endforeach
@@ -400,23 +411,58 @@
                                 $.ajax({
                                     url: '{{ route("excel_doc_mapping.storeMapping") }}',
                                     type: 'POST',
+                                    headers: {
+                                        'X-CSRF-TOKEN': '{{ csrf_token() }}' // Đảm bảo gửi CSRF token
+                                    },
                                     data: {
                                         variable_id: variableId,
                                         var_name: varName,
                                         excel_sheet_id: sheetId,
                                         table_name: tableName,
                                         original_headers_index: columnIndex,
-                                        field: columnName,
-                                        _token: '{{ csrf_token() }}'
+                                        field: columnName
                                     },
                                     success: function(response) {
                                         alert(response.success || 'Ánh xạ thành công!');
                                         $sheetList.removeClass('show').empty();
-                                        // Hiển thị tên field đã ánh xạ bên cạnh biến
-                                        $icon.parent().append('<span class="mapped-field text-success ms-2">' + columnName + '</span>');
+                                        // Sửa: Xóa span và nút delete cũ, thêm span mới và nút delete để đồng bộ với HTML
+                                        $icon.parent().find('.mapped-field, .delete-mapping').remove(); // Xóa span ánh xạ và nút delete cũ nếu có
+                                        // Thêm field ánh xạ với định dạng & field (ví dụ: & Project code), mã hóa để an toàn
+                                        $icon.parent().append('<span class="mapped-field text-success ms-2"> & ' + $('<div/>').text(columnName).html() + '</span>');
+                                        // Thêm: Thêm nút delete để cho phép xóa ánh xạ
+                                        $icon.parent().append('<i class="fa-solid fa-trash delete-mapping ms-2" title="Xóa ánh xạ" data-variable-id="' + variableId + '"></i>');
                                     },
                                     error: function(xhr) {
+                                        console.error('Error in storeMapping:', xhr.responseJSON); // Debug
                                         alert(xhr.responseJSON?.error || 'Lỗi khi lưu ánh xạ.');
+                                    }
+                                });
+                            });
+
+                            // Thêm: Xử lý sự kiện click vào nút delete để xóa ánh xạ
+                            $(document).on('click', '.delete-mapping', function(e) {
+                                e.preventDefault();
+                                var variableId = $(this).data('variable-id');
+                                var $parentLi = $(this).parent(); // Lưu tham chiếu đến li cha để cập nhật giao diện
+
+                                // Gửi yêu cầu AJAX để xóa ánh xạ khỏi bảng mappings
+                                $.ajax({
+                                    url: '{{ route("excel_doc_mapping.deleteMapping") }}', // Route mới để xóa ánh xạ
+                                    type: 'POST',
+                                    headers: {
+                                        'X-CSRF-TOKEN': '{{ csrf_token() }}' // Đảm bảo gửi CSRF token
+                                    },
+                                    data: {
+                                        variable_id: variableId
+                                    },
+                                    success: function(response) {
+                                        alert(response.success || 'Xóa ánh xạ thành công!');
+                                        // Xóa span ánh xạ và nút delete khỏi giao diện
+                                        $parentLi.find('.mapped-field, .delete-mapping').remove();
+                                    },
+                                    error: function(xhr) {
+                                        console.error('Error in deleteMapping:', xhr.responseJSON); // Debug
+                                        alert(xhr.responseJSON?.error || 'Lỗi khi xóa ánh xạ.');
                                     }
                                 });
                             });
