@@ -26,3 +26,9 @@ Route::post('/mapping/store', [ExcelDocMappingController::class, 'storeMapping']
 
 // Thêm: Route để xóa ánh xạ
 Route::post('/mapping/delete', [ExcelDocMappingController::class, 'deleteMapping'])->name('excel_doc_mapping.deleteMapping');
+
+// Thêm: Route để xóa sheet
+Route::post('/excel/remove-sheet', [ExcelController::class, 'removeSheet'])->name('excel.removeSheet');
+
+// Thêm: Route để kiểm tra ánh xạ
+Route::post('/mapping/check', [ExcelController::class, 'checkMapping'])->name('excel_doc_mapping.checkMapping');
