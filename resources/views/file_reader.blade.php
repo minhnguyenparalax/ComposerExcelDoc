@@ -487,34 +487,31 @@
                             });
 
                             // Sửa: Xử lý sự kiện click vào nút delete để cập nhật is_table_created và reload trang
-        $(document).on('click', '.delete-sheet', function(e) {
-            e.preventDefault();
-            var sheetId = $(this).data('sheet-id');
-            var $row = $(this).closest('tr'); // Lưu tham chiếu đến hàng tr để xóa khỏi giao diện
+                            $(document).on('click', '.delete-sheet', function(e) {
+                                e.preventDefault();
+                                var sheetId = $(this).data('sheet-id');
+                                var $row = $(this).closest('tr'); // Lưu tham chiếu đến hàng tr để xóa khỏi giao diện
 
-            // Gửi yêu cầu AJAX để cập nhật is_table_created và xóa ánh xạ
-            $.ajax({
-                url: '{{ route("excel.removeSheet") }}', // Route để cập nhật sheet
-                type: 'POST',
-                headers: {
-                    'X-CSRF-TOKEN': '{{ csrf_token() }}' // Đảm bảo gửi CSRF token
-                },
-                data: {
-                    sheet_id: sheetId
-                },
-                success: function(response) {
-                    alert(response.success || 'Xóa bảng thành công!');
-                    // Xóa hàng khỏi giao diện trước khi reload để giao diện mượt mà
-                    $row.remove();
-                    // Thêm: Reload trang để cập nhật toàn bộ giao diện
-                    window.location.reload();
-                },
-                error: function(xhr) {
-                    console.error('Lỗi khi xóa bảng:', xhr.responseJSON); // Debug lỗi
-                    alert(xhr.responseJSON?.error || 'Lỗi khi xóa bảng.');
-                }
-            });
-        });
+                                // Gửi yêu cầu AJAX để cập nhật is_table_created và xóa ánh xạ
+                                $.ajax({
+                                    url: '{{ route("excel.removeSheet") }}', // Route để cập nhật sheet
+                                    type: 'POST',
+                                    headers: {
+                                        'X-CSRF-TOKEN': '{{ csrf_token() }}' // Đảm bảo gửi CSRF token
+                                    },
+                                    data: {
+                                        sheet_id: sheetId
+                                    },
+                                    success: function(response) {
+                                        alert(response.success || 'Xóa bảng thành công!');
+                                        // Xóa hàng khỏi giao diện trước khi reload để giao diện mượt mà
+                                        $row.remove();
+                                        // Thêm: Reload trang để cập nhật toàn bộ giao diện
+                                        window.location.reload();
+                                    },
+                                    
+                                });
+                            });
 
                         },
                         error: function(xhr) {
