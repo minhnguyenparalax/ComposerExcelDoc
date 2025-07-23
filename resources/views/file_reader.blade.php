@@ -107,6 +107,18 @@
         .card.mb-3 {
             margin-bottom: 1rem !important;
         }
+
+
+        /* Thêm: Hiệu ứng hover cho icon delete-sheet */
+        .delete-sheet {
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .delete-sheet:hover {
+            color: red; /* Đổi màu thành đỏ khi hover */
+            transform: scale(1.2); /* Phóng to nhẹ */
+            box-shadow: 0 0 5px rgba(0, 0, 0, 0.3); /* Thêm bóng nhẹ */
+        }
     </style>
 </head>
 <body>
@@ -218,6 +230,7 @@
                                             <td>{{ $doc->name }}</td>
                                             <td>
                                                 @if ($doc->is_selected)
+                                                    <!--Biến, đã trích xuất-->
                                                     <div>
                                                         <strong>Biến đã trích xuất:</strong>
                                                         @if ($doc->variables->count())
@@ -266,7 +279,7 @@
                 </div>
             </div>
         </div>
-
+        <!--Danh sách sheet-->                                                                       
         <div class="row">
             <div class="col-md-6">
                 <div class="card mb-3">
@@ -280,13 +293,19 @@
                                         <tr>
                                             <th>Sheet Name</th>
                                             <th>Table Name</th>
+                                            <!-- Thêm: Cột Action cho nút xóa -->
+                                            <th>Action</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         @foreach ($excelFile->sheets as $sheet)
-                                            <tr>
+                                            <tr data-sheet-id="{{ $sheet->id }}">
                                                 <td>{{ $sheet->name }}</td>
                                                 <td>{{ $sheet->table_name }}</td>
+                                                <!-- Thêm: Nút xóa để xóa sheet khỏi excel_sheets và mappings -->
+                                                <td>
+                                                    <i class="fa-solid fa-trash delete-sheet" title="Xóa sheet" data-sheet-id="{{ $sheet->id }}"></i>
+                                                </td>
                                             </tr>
                                         @endforeach
                                     </tbody>
@@ -428,7 +447,7 @@
                                         // Sửa: Xóa span và nút delete cũ, thêm span mới và nút delete để đồng bộ với HTML
                                         $icon.parent().find('.mapped-field, .delete-mapping').remove(); // Xóa span ánh xạ và nút delete cũ nếu có
                                         // Thêm field ánh xạ với định dạng & field (ví dụ: & Project code), mã hóa để an toàn
-                                        $icon.parent().append('<span class="mapped-field text-success ms-2"> & ' + $('<div/>').text(columnName).html() + '</span>');
+                                        $icon.parent().append('<span class="mapped-field text-success ms-2"> ' + $('<div/>').text(columnName).html() + '</span>');
                                         // Thêm: Thêm nút delete để cho phép xóa ánh xạ
                                         $icon.parent().append('<i class="fa-solid fa-trash delete-mapping ms-2" title="Xóa ánh xạ" data-variable-id="' + variableId + '"></i>');
                                     },
@@ -466,12 +485,46 @@
                                     }
                                 });
                             });
+
+                            // Sửa: Xử lý sự kiện click vào nút delete để cập nhật is_table_created và reload trang
+        $(document).on('click', '.delete-sheet', function(e) {
+            e.preventDefault();
+            var sheetId = $(this).data('sheet-id');
+            var $row = $(this).closest('tr'); // Lưu tham chiếu đến hàng tr để xóa khỏi giao diện
+
+            // Gửi yêu cầu AJAX để cập nhật is_table_created và xóa ánh xạ
+            $.ajax({
+                url: '{{ route("excel.removeSheet") }}', // Route để cập nhật sheet
+                type: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}' // Đảm bảo gửi CSRF token
+                },
+                data: {
+                    sheet_id: sheetId
+                },
+                success: function(response) {
+                    alert(response.success || 'Xóa bảng thành công!');
+                    // Xóa hàng khỏi giao diện trước khi reload để giao diện mượt mà
+                    $row.remove();
+                    // Thêm: Reload trang để cập nhật toàn bộ giao diện
+                    window.location.reload();
+                },
+                error: function(xhr) {
+                    console.error('Lỗi khi xóa bảng:', xhr.responseJSON); // Debug lỗi
+                    alert(xhr.responseJSON?.error || 'Lỗi khi xóa bảng.');
+                }
+            });
+        });
+
                         },
                         error: function(xhr) {
                             console.error('Error in getFields:', xhr.responseJSON); // Debug
                             var errorMsg = xhr.responseJSON?.error || 'Không thể tải danh sách fields.';
                             $sheetList.html('<p class="text-danger">' + errorMsg + '</p>').addClass('show');
                         }
+
+
+
                     });
                 });
             }
@@ -506,6 +559,58 @@
                     }
                 });
             });
+
+
+            // Thêm: Xử lý sự kiện click vào nút delete để xóa sheet
+            $(document).on('click', '.delete-sheet', function(e) {
+                e.preventDefault(); 
+                var sheetId = $(this).data('sheet-id');
+                var $row = $(this).closest('tr'); // Lưu tham chiếu đến hàng tr để xóa khỏi giao diện
+
+            // Gửi yêu cầu AJAX để xóa sheet khỏi bảng excel_sheets và các ánh xạ liên quan
+            $.ajax({
+                url: '{{ route("excel.removeSheet") }}', // Route mới để xóa sheet
+                type: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}' // Đảm bảo gửi CSRF token
+                },
+                data: {
+                    sheet_id: sheetId
+                },
+                success: function(response) {
+                    alert(response.success || 'Xóa sheet thành công!');
+                    // Xóa hàng khỏi giao diện
+                    $row.remove();
+                    // Thêm: Cập nhật lại giao diện Biến đã trích xuất để xóa các ánh xạ liên quan
+                    $('.variable-item').each(function() {
+                        var $li = $(this);
+                        var variableId = $li.find('.mapping-icon').data('variable-id');
+                        $.ajax({
+                            url: '{{ route("excel_doc_mapping.checkMapping") }}', // Route mới để kiểm tra ánh xạ
+                            type: 'POST',
+                            headers: {
+                                'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                            },
+                            data: {
+                                variable_id: variableId
+                            },
+                            success: function(response) {
+                                if (!response.exists) {
+                                    $li.find('.mapped-field, .delete-mapping').remove();
+                                }
+                            },
+                            error: function(xhr) {
+                                console.error('Error in checkMapping:', xhr.responseJSON);
+                            }
+                        });
+                    });
+                },
+                error: function(xhr) {
+                    console.error('Error in deleteSheet:', xhr.responseJSON); // Debug
+                    alert(xhr.responseJSON?.error || 'Lỗi khi xóa sheet.');
+                }
+            });
+        });
 
             // Khởi tạo sự kiện cho các icon mapping khi tải trang
             initMappingIcons();
