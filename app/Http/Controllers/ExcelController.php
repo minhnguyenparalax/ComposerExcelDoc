@@ -12,6 +12,8 @@ use PhpOffice\PhpSpreadsheet\IOFactory;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 use App\Models\Docfile;
+use App\Models\Mapping;
+
 
 class ExcelController extends Controller
 {
@@ -245,7 +247,7 @@ class ExcelController extends Controller
                         $totalColumns = count($headers);
 
                         for ($index = 0; $index < $totalColumns; $index++) {
-                            $field = $headers[$index];
+                            $field = $headers[$index];   // Duyệt Tên trường của headers mỗi sheet 
                             $baseName = !empty($field) ? Str::slug($field, '_') : 'null_' . $index;
                             $columnName = $baseName;
                             $suffix = 2;
@@ -260,6 +262,11 @@ class ExcelController extends Controller
 
                         $table->timestamps();
                     });
+                    $sheet->is_table_created = true;
+                    $headers = array_map(fn($header) => preg_replace('/[\r\n]+/', ' ', trim($header)), $headers);
+                    $sheet->original_headers = json_encode($headers, JSON_UNESCAPED_UNICODE); // Lưu tiêu đề gốc
+                    //JSON_UNESCAPED_UNICODE để nhận diên chữ có dấu
+                    $sheet->save();
                 }
 
                 $insertedCount = 0;
@@ -280,6 +287,9 @@ class ExcelController extends Controller
                 return redirect()->route('file.index')->with('success', "Đã tạo bảng {$sheet->table_name} (fileId: {$fileId}) và chèn $insertedCount dòng thành công.");
             }
 
+
+            
+
             return view('sheet_data', [
                 'excelFiles' => Excelfiles::with('sheets')->get(),
                 'docFiles' => \App\Models\Docfile::all(),
@@ -298,6 +308,71 @@ class ExcelController extends Controller
         } catch (\Exception $e) {
             Log::error('Lỗi hệ thống: ' . $e->getMessage());
             return redirect()->route('file.index')->with('error', 'Lỗi không xác định: ' . $e->getMessage());
+        }
+    }
+
+
+    // Sửa: Cập nhật is_table_created thành 0 và xóa ánh xạ liên quan
+    public function removeSheet(Request $request)
+    {
+        // Kiểm tra dữ liệu đầu vào
+        $request->validate([
+            'sheet_id' => 'required|exists:excel_sheets,id',
+        ], [
+            'sheet_id.exists' => 'Không tìm thấy sheet trong bảng excel_sheets.',
+        ]);
+
+        DB::beginTransaction();
+        try {
+            // Tìm sheet cần cập nhật
+            $sheet = ExcelSheets::findOrFail($request->sheet_id);
+
+            // Xóa các ánh xạ liên quan trong bảng mappings
+            Mapping::where('original_headers_id', $request->sheet_id)->delete();
+
+            // Xóa bảng động trong database nếu tồn tại
+            if (Schema::hasTable($sheet->table_name)) {
+                Schema::dropIfExists($sheet->table_name);
+            }
+
+            // Cập nhật is_table_created thành 0 thay vì xóa sheet
+            $sheet->update(['is_table_created' => false]);
+
+            DB::commit();
+            // Trả về thông báo thành công
+            return response()->json(['success' => 'Xóa bảng thành công.']);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            // Ghi log lỗi để debug
+            Log::error('Lỗi khi xóa bảng: ' . $e->getMessage(), [
+                'request' => $request->all(),
+                'sheet_id' => $request->sheet_id
+            ]);
+            return response()->json(['error' => 'Không thể xóa bảng: ' . $e->getMessage()], 500);
+        }
+    }
+
+    // Thêm: Kiểm tra xem biến có ánh xạ trong mappings không
+    public function checkMapping(Request $request)
+    {
+        // Kiểm tra dữ liệu đầu vào
+        $request->validate([
+            'variable_id' => 'required|exists:mappings,doc_variable_id',
+        ], [
+            'variable_id.exists' => 'Không tìm thấy ánh xạ cho biến này.',
+        ]);
+
+        try {
+            // Kiểm tra xem biến có ánh xạ không
+            $exists = Mapping::where('doc_variable_id', $request->variable_id)->exists();
+            return response()->json(['exists' => $exists]);
+        } catch (\Exception $e) {
+            // Ghi log lỗi để debug
+            Log::error('Lỗi khi kiểm tra ánh xạ: ' . $e->getMessage(), [
+                'request' => $request->all(),
+                'variable_id' => $request->variable_id
+            ]);
+            return response()->json(['error' => 'Không thể kiểm tra ánh xạ: ' . $e->getMessage()], 500);
         }
     }
 }
