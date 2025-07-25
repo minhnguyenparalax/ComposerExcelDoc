@@ -5,12 +5,16 @@ use App\Http\Controllers\DocController;
 use App\Http\Controllers\ExcelDocMappingController;
 use Illuminate\Support\Facades\Route;
 
+
+//Route Đọc Excel 
 Route::get('/', [ExcelController::class, 'viewExcelFiles'])->name('file.index');
 Route::post('/excel/add', [ExcelController::class, 'addExcel'])->name('excel.addExcel');
 Route::delete('/excel/remove/{id}', [ExcelController::class, 'removeExcel'])->name('excel.removeExcel');
 Route::get('/excel/read/{fileId}/{sheetId}', [ExcelController::class, 'readSheet'])->defaults('action', 'view')->name('excel.readSheet');
 Route::get('/excel/select/{fileId}/{sheetId}', [ExcelController::class, 'readSheet'])->defaults('action', 'select')->name('excel.selectSheet');
 
+
+//Route Đọc Doc
 Route::get('/files', [DocController::class, 'index'])->name('file.index');
 
 
