@@ -12,7 +12,7 @@ Route::post('/excel/add', [ExcelController::class, 'addExcel'])->name('excel.add
 Route::delete('/excel/remove/{id}', [ExcelController::class, 'removeExcel'])->name('excel.removeExcel');
 Route::get('/excel/read/{fileId}/{sheetId}', [ExcelController::class, 'readSheet'])->defaults('action', 'view')->name('excel.readSheet');
 Route::get('/excel/select/{fileId}/{sheetId}', [ExcelController::class, 'readSheet'])->defaults('action', 'select')->name('excel.selectSheet');
-
+ 
 
 //Route Đọc Doc
 Route::get('/files', [DocController::class, 'index'])->name('file.index');
