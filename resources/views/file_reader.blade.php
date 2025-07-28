@@ -119,6 +119,15 @@
             transform: scale(1.2); /* Phóng to nhẹ */
             box-shadow: 0 0 5px rgba(0, 0, 0, 0.3); /* Thêm bóng nhẹ */
         }
+
+        /* Thêm: Căn chỉnh checkbox trong Biến đã trích xuất */
+        .variable-item {
+            display: flex;
+            align-items: center;
+        }
+        .variable-item input[type="checkbox"] {
+            margin-right: 8px;
+        }
     </style>
 </head>
 <body>
@@ -230,22 +239,27 @@
                                             <td>{{ $doc->name }}</td>
                                             <td>
                                                 @if ($doc->is_selected)
-                                                    <!--Biến, đã trích xuất-->
+                                                    <!-- Phần Biến đã trích xuất -->
                                                     <div>
                                                         <strong>Biến đã trích xuất:</strong>
                                                         @if ($doc->variables->count())
                                                             <ul style="margin-bottom:0;">
                                                                 @foreach ($doc->variables as $variable)
                                                                     <li class="variable-item dropdown">
-                                                                        <!-- Sửa: Hiển thị var_name và field ánh xạ từ bảng mappings với định dạng giống JavaScript -->
+                                                                        <!-- Thêm: Checkbox để đánh dấu primary_key, checked nếu primary_key = "1" -->
+                                                                        @php
+                                                                            // Sửa: Định nghĩa $mapping trước để tránh lỗi Undefined variable
+                                                                            $mapping = \App\Models\Mapping::where('doc_variable_id', $variable->id)->first();
+                                                                        @endphp
+                                                                        <input type="checkbox" class="primary-key-checkbox" data-variable-id="{{ $variable->id }}"
+                                                                            @if ($mapping && $mapping->primary_key === '1') checked @endif
+                                                                        >
+                                                                        <!-- Sửa: Hiển thị var_name và field ánh xạ với định dạng giống JavaScript -->
                                                                         {{ $variable->var_name }}
                                                                         @php
-                                                                            // Truy vấn bảng mappings để lấy field ánh xạ cho biến
-                                                                            $mapping = \App\Models\Mapping::where('doc_variable_id', $variable->id)->first();
-                                                                            // Nếu có ánh xạ, hiển thị field với lớp CSS text-success ms-2 để đồng bộ hiệu ứng
+                                                                            // Sửa: Sử dụng $mapping đã định nghĩa để hiển thị field và nút xóa
                                                                             if ($mapping && $mapping->field) {
-                                                                                echo '<span class="mapped-field text-success ms-2"> & ' . htmlspecialchars($mapping->field, ENT_QUOTES, 'UTF-8') . '</span>';
-                                                                                // Thêm: Hiển thị nút Delete chỉ khi có ánh xạ
+                                                                                echo '<span class="mapped-field text-success ms-2">&' . htmlspecialchars($mapping->field, ENT_QUOTES, 'UTF-8') . '</span>';
                                                                                 echo '<i class="fa-solid fa-trash delete-mapping ms-2" title="Xóa ánh xạ" data-variable-id="' . $variable->id . '"></i>';
                                                                             }
                                                                         @endphp
@@ -520,9 +534,13 @@
                             $sheetList.html('<p class="text-danger">' + errorMsg + '</p>').addClass('show');
                         }
 
+                        
+
 
 
                     });
+
+                    
                 });
             }
 
@@ -609,6 +627,7 @@
             });
         });
 
+            
             // Khởi tạo sự kiện cho các icon mapping khi tải trang
             initMappingIcons();
 
@@ -619,6 +638,77 @@
                 }
             });
         });
+
+            // Sửa: Xử lý sự kiện change của checkbox để cập nhật primary_key
+            $(document).on('change', '.primary-key-checkbox', function() {
+                var variableId = $(this).data('variable-id');
+                var isChecked = $(this).is(':checked');
+                var primaryKeyValue = isChecked ? '1' : null; // Đảm bảo gửi "1" hoặc null
+                // Sửa: Debug dữ liệu gửi chi tiết
+                console.log('Gửi AJAX setPrimaryKey:', {
+                    variable_id: variableId,
+                    primary_key: primaryKeyValue,
+                    is_checked: isChecked
+                });
+                
+                // Gửi AJAX để cập nhật primary_key trong bảng mappings
+                $.ajax({
+                    url: '{{ route("excel_doc_mapping.setPrimaryKey") }}',
+                    type: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}' // Đảm bảo gửi CSRF token
+                    },
+                    data: {
+                        variable_id: variableId,
+                        primary_key: primaryKeyValue // Tích: "1", bỏ tích: null
+                    },
+                    success: function(response) {
+                        // Sửa: Hiển thị thông báo chi tiết với var_name
+                        if (response.success) {
+                            alert(response.success); // Ví dụ: "Đã cập nhật primary key cho Tên DN SMEs"
+                            // Sửa: Debug response chi tiết
+                            console.log('Response setPrimaryKey:', {
+                                success: response.success,
+                                variable_id: response.variable_id,
+                                primary_key: response.primary_key,
+                                var_name: response.var_name
+                            });
+                            // Cập nhật trạng thái checkbox của tất cả var_name
+                            $('.primary-key-checkbox').each(function() {
+                                var $checkbox = $(this);
+                                var varId = $checkbox.data('variable-id');
+                                $.ajax({
+                                    url: '{{ route("excel_doc_mapping.checkMapping") }}',
+                                    type: 'POST',
+                                    headers: {
+                                        'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                                    },
+                                    data: {
+                                        variable_id: varId
+                                    },
+                                    success: function(response) {
+                                        // Cập nhật trạng thái checked dựa trên primary_key
+                                        $checkbox.prop('checked', response.mapping && response.mapping.primary_key === '1');
+                                        // Sửa: Debug trạng thái checkbox
+                                        console.log('Checkbox varId:', varId, 'checked:', $checkbox.prop('checked'), 'primary_key:', response.mapping?.primary_key);
+                                    },
+                                    error: function(xhr) {
+                                        console.error('Lỗi khi kiểm tra ánh xạ:', xhr.responseJSON);
+                                    }
+                                });
+                            });
+                        } else {
+                            alert(response.error || 'Lỗi khi cập nhật primary key.');
+                        }
+                    },
+                    error: function(xhr) {
+                        console.error('Lỗi khi cập nhật primary_key:', xhr.responseJSON);
+                        alert(xhr.responseJSON?.error || 'Lỗi khi cập nhật primary key.');
+                    }
+                });
+            });
+        
+
         </script>
 
 
