@@ -36,3 +36,6 @@ Route::post('/excel/remove-sheet', [ExcelController::class, 'removeSheet'])->nam
 
 // Thêm: Route để kiểm tra ánh xạ
 Route::post('/mapping/check', [ExcelController::class, 'checkMapping'])->name('excel_doc_mapping.checkMapping');
+
+// Thêm: Route để cập nhật primary_key
+Route::post('/excel/mapping/set-primary-key', [ExcelDocMappingController::class, 'setPrimaryKey'])->name('excel_doc_mapping.setPrimaryKey');
