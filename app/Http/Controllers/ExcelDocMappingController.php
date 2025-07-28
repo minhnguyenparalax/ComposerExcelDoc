@@ -7,6 +7,7 @@ use App\Models\Excelfiles;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
 use App\Models\Mapping;
 
 class ExcelDocMappingController extends Controller
@@ -135,6 +136,52 @@ class ExcelDocMappingController extends Controller
             return response()->json(['error' => 'Không thể xóa ánh xạ: ' . $e->getMessage()], 500);
         }
     }
+    
+    // Sửa: Cập nhật primary_key trong bảng mappings với transaction và debug chi tiết
+    public function setPrimaryKey(Request $request)
+    {
+        $request->validate([
+            'variable_id' => 'required|exists:doc_variables,id',
+            'primary_key' => 'nullable|in:1' // Sửa: Chỉ chấp nhận "1" hoặc NULL
+        ]);
 
+        DB::beginTransaction();
+        try {
+            $mapping = Mapping::where('doc_variable_id', $request->variable_id)->first();
+            if (!$mapping) {
+                return response()->json(['error' => 'Không tìm thấy ánh xạ cho variable_id: ' . $request->variable_id], 404);
+            }
+            // Sửa: Ghi log trước khi cập nhật
+            Log::info('Trước khi cập nhật primary_key', [
+                'variable_id' => $request->variable_id,
+                'var_name' => $mapping->var_name,
+                'current_primary_key' => $mapping->primary_key,
+                'new_primary_key' => $request->primary_key
+            ]);
+            
+            // Sửa: Cập nhật primary_key bằng save()
+            $mapping->primary_key = $request->primary_key;
+            $mapping->save();
 
+            // Sửa: Ghi log sau khi cập nhật
+            Log::info('Sau khi cập nhật primary_key', [
+                'variable_id' => $request->variable_id,
+                'var_name' => $mapping->var_name,
+                'updated_primary_key' => $mapping->primary_key
+            ]);
+            
+            DB::commit();
+            // Sửa: Trả về var_name trong response
+            return response()->json([
+                'success' => 'Đã cập nhật primary key cho ' . $mapping->var_name,
+                'variable_id' => $request->variable_id,
+                'primary_key' => $mapping->primary_key,
+                'var_name' => $mapping->var_name
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Lỗi khi cập nhật primary_key: ' . $e->getMessage(), ['request' => $request->all()]);
+            return response()->json(['error' => 'Không thể cập nhật primary key: ' . $e->getMessage()], 500);
+        }
+    }
 }
