@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class ExcelSheets extends Model
 {
-    protected $fillable = ['excelfile_id', 'name', 'table_name', 'is_table_created'];
+    protected $fillable = ['excelfile_id', 'name', 'table_name', 'is_table_created', 'original_headers'];
     
     public function excelfile()
     {
