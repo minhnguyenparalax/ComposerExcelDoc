@@ -137,12 +137,12 @@ class ExcelDocMappingController extends Controller
         }
     }
     
-    // Sửa: Cập nhật primary_key trong bảng mappings với transaction và debug chi tiết
+    // Sửa: Cập nhật primary_key với thông báo tùy theo tích/bỏ tích
     public function setPrimaryKey(Request $request)
     {
         $request->validate([
             'variable_id' => 'required|exists:doc_variables,id',
-            'primary_key' => 'nullable|in:1' // Sửa: Chỉ chấp nhận "1" hoặc NULL
+            'primary_key' => 'nullable|in:1' // Chỉ chấp nhận "1" hoặc NULL
         ]);
 
         DB::beginTransaction();
@@ -151,7 +151,7 @@ class ExcelDocMappingController extends Controller
             if (!$mapping) {
                 return response()->json(['error' => 'Không tìm thấy ánh xạ cho variable_id: ' . $request->variable_id], 404);
             }
-            // Sửa: Ghi log trước khi cập nhật
+            // Ghi log trước khi cập nhật
             Log::info('Trước khi cập nhật primary_key', [
                 'variable_id' => $request->variable_id,
                 'var_name' => $mapping->var_name,
@@ -159,11 +159,11 @@ class ExcelDocMappingController extends Controller
                 'new_primary_key' => $request->primary_key
             ]);
             
-            // Sửa: Cập nhật primary_key bằng save()
+            // Cập nhật primary_key bằng save()
             $mapping->primary_key = $request->primary_key;
             $mapping->save();
 
-            // Sửa: Ghi log sau khi cập nhật
+            // Ghi log sau khi cập nhật
             Log::info('Sau khi cập nhật primary_key', [
                 'variable_id' => $request->variable_id,
                 'var_name' => $mapping->var_name,
@@ -171,9 +171,11 @@ class ExcelDocMappingController extends Controller
             ]);
             
             DB::commit();
-            // Sửa: Trả về var_name trong response
+            // Sửa: Trả về thông báo tùy theo primary_key
             return response()->json([
-                'success' => 'Đã cập nhật primary key cho ' . $mapping->var_name,
+                'success' => $request->primary_key === '1' 
+                    ? 'Đã cập nhật primary key cho ' . $mapping->var_name 
+                    : 'Bạn đã bỏ tích primary_key của ' . $mapping->var_name,
                 'variable_id' => $request->variable_id,
                 'primary_key' => $mapping->primary_key,
                 'var_name' => $mapping->var_name
