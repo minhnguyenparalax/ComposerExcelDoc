@@ -125,6 +125,8 @@
             display: flex;
             align-items: center;
         }
+
+        /*Thêm: Nút checkbox */
         .variable-item input[type="checkbox"] {
             margin-right: 8px;
         }
