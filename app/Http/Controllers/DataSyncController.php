@@ -135,17 +135,37 @@ class DataSyncController extends Controller
                 'doc_table_name' => $docTableName,
                 'var_name_column' => $exactVarNameColumn
             ]);
-
-            // Xóa toàn bộ dữ liệu cũ trong bảng Word
-            DB::table($docTableName)->truncate();
-
-            // Chèn bản ghi mới vào bảng Word với giá trị từ Excel
-            foreach ($values as $value) {
-                DB::table($docTableName)->insert([
-                    $exactVarNameColumn => $value
+            // Kiểm tra bảng Word
+            $wordColumns = Schema::getColumnListing($docTableName);
+            if (!in_array($exactVarNameColumn, $wordColumns)) {
+                Log::error('Cột var_name không tồn tại', [
+                    'doc_name' => $docTableName,
+                    'var_name' => $exactVarNameColumn,
+                    'columns' => $wordColumns
                 ]);
+                return response()->json(['error' => 'Cột ' . $exactVarNameColumn . ' không tồn tại'], 400);
             }
 
+            // Xóa toàn bộ dữ liệu cũ trong bảng Word
+            //DB::table($docTableName)->truncate();
+
+            // Chèn bản ghi mới vào bảng Word với giá trị từ Excel
+            // Chèn bản ghi mới, bỏ truncate
+            foreach ($values as $value) {
+                try {
+                    DB::table($docTableName)->insert([
+                        $exactVarNameColumn => $value
+                    ]);
+                } catch (\Exception $e) {
+                    Log::error('Lỗi khi chèn bản ghi', [
+                        'doc_name' => $docTableName,
+                        'var_name' => $exactVarNameColumn,
+                        'value' => $value,
+                        'error' => $e->getMessage()
+                    ]);
+                    continue; // Bỏ qua bản ghi lỗi
+                }
+            }
             Log::info('Chèn giá trị vào bảng động Word thành công', [
                 'doc_name' => $docTableName,
                 'var_name' => $exactVarNameColumn,
