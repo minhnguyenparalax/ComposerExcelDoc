@@ -54,7 +54,7 @@ class ExcelDocMappingController extends Controller
         ]);
     }
 
-        // Lưu ánh xạ giữa biến Word và cột Excel vào bảng mappings
+    // Sửa: Lưu ánh xạ và cập nhật doc_name từ bảng động Docfile
     public function storeMapping(Request $request)
     {
         // Kiểm tra dữ liệu đầu vào
@@ -77,29 +77,65 @@ class ExcelDocMappingController extends Controller
                 return response()->json(['error' => 'Biến này đã được ánh xạ.'], 400);
             }
 
-            // Sửa: Lấy var_name đầy đủ từ bảng doc_variables thay vì từ request
+            // Lấy var_name đầy đủ từ bảng doc_variables
             $variable = DocVariable::findOrFail($request->variable_id);
-            $varName = $variable->var_name; // Đảm bảo lấy var_name đầy đủ (ví dụ: Tên DN SMEs)
+            $varName = $variable->var_name; // Ví dụ: Tên DN SMEs
 
-            // Sửa: Tạo chuỗi fields_mapping từ var_name của doc_variables và field từ request
+            // Thêm: Tìm bảng động Docfile từ docfile_id
+            $docFile = \App\Models\Docfile::find($variable->docfile_id);
+            if (!$docFile) {
+                Log::error('Không tìm thấy Docfile', [
+                    'variable_id' => $request->variable_id,
+                    'docfile_id' => $variable->docfile_id
+                ]);
+                return response()->json(['error' => 'Không tìm thấy Docfile cho docfile_id: ' . ($variable->docfile_id ?? 'NULL')], 404);
+            }
+
+            // Thêm: Lấy tên bảng động từ docfile
+            $docTableName = $docFile->table_name ?? null; // Ví dụ: doc_246_05_evaluate_the_quality_of_consulting_repaired
+            if (!$docTableName) {
+                Log::warning('Docfile không có table_name', [
+                    'variable_id' => $request->variable_id,
+                    'docfile_id' => $variable->docfile_id,
+                    'docfile' => $docFile->toArray()
+                ]);
+                return response()->json(['error' => 'Docfile không có table_name cho docfile_id: ' . $variable->docfile_id], 400);
+            }
+
+            // Sửa: Tạo chuỗi fields_mapping và lưu doc_name
             $fieldsMapping = $varName . ' & ' . $request->field;
-
-            // Sửa: Lưu var_name từ doc_variables vào bảng mappings
-            Mapping::create([
+            $mapping = Mapping::create([
                 'doc_variable_id' => $request->variable_id,
-                'var_name' => $varName, // Sử dụng var_name từ doc_variables
+                'var_name' => $varName,
                 'table_name' => $request->table_name,
                 'original_headers_id' => $request->excel_sheet_id,
                 'original_headers_index' => $request->original_headers_index,
                 'field' => $request->field,
                 'fields_mapping' => $fieldsMapping,
+                'doc_name' => $docTableName // Thêm: Lưu tên bảng động
             ]);
 
-            // Trả về thông báo thành công
-            return response()->json(['success' => 'Ánh xạ đã được lưu thành công.']);
+            // Thêm: Ghi log chi tiết để debug
+            Log::info('Ánh xạ thành công', [
+                'variable_id' => $request->variable_id,
+                'var_name' => $varName,
+                'field' => $request->field,
+                'table_name' => $request->table_name,
+                'doc_name' => $docTableName,
+                'mapping_id' => $mapping->id,
+                'doc_name_stored' => $mapping->fresh()->doc_name // Kiểm tra giá trị thực sự lưu
+            ]);
+
+            // Sửa: Trả về thông báo thành công với doc_name
+            return response()->json([
+                'success' => 'Ánh xạ thành công cho ' . $varName . ', thuộc bảng ' . $docTableName,
+                'variable_id' => $request->variable_id,
+                'field' => $request->field,
+                'table_name' => $request->table_name,
+                'doc_name' => $docTableName
+            ]);
         } catch (\Exception $e) {
-            // Ghi log lỗi để debug
-        Log::error('Lỗi khi lưu ánh xạ: ' . $e->getMessage(), [
+            Log::error('Lỗi khi lưu ánh xạ: ' . $e->getMessage(), [
                 'request' => $request->all(),
                 'variable_id' => $request->variable_id
             ]);
@@ -186,4 +222,86 @@ class ExcelDocMappingController extends Controller
             return response()->json(['error' => 'Không thể cập nhật primary key: ' . $e->getMessage()], 500);
         }
     }
+
+    // Sửa: Cập nhật ánh xạ và lưu doc_name từ bảng động DocFile với debug chi tiết
+    public function mapField(Request $request)
+    {
+        $request->validate([
+            'variable_id' => 'required|exists:doc_variables,id',
+            'field' => 'required|string',
+            'table_name' => 'required|string',
+            'sheet_id' => 'required|exists:excel_sheets,id',
+            'column_index' => 'required|integer'
+        ]);
+
+        try {
+            // Tìm DocVariable
+            $variable = DocVariable::find($request->variable_id);
+            if (!$variable) {
+                Log::error('Không tìm thấy DocVariable', ['variable_id' => $request->variable_id]);
+                return response()->json(['error' => 'Không tìm thấy DocVariable cho variable_id: ' . $request->variable_id], 404);
+            }
+
+            // Sửa: Tìm bảng động DocFile từ docfile_id (thay vì doc_id)
+            $docFile = \App\Models\Docfile::find($variable->docfile_id);
+            if (!$docFile) {
+                Log::error('Không tìm thấy Docfile', [
+                    'variable_id' => $request->variable_id,
+                    'docfile_id' => $variable->docfile_id
+                ]);
+                return response()->json(['error' => 'Không tìm thấy Docfile cho docfile_id: ' . ($variable->docfile_id ?? 'NULL')], 404);
+            }
+
+            // Sửa: Lấy tên bảng động từ docfile
+            $docTableName = $docFile->table_name ?? null; // Ví dụ: doc_246_05_evaluate_the_quality_of_consulting_repaired
+            if (!$docTableName) {
+                Log::warning('Docfile không có table_name', [
+                    'variable_id' => $request->variable_id,
+                    'docfile_id' => $variable->docfile_id,
+                    'docfile' => $docFile->toArray()
+                ]);
+                return response()->json(['error' => 'Docfile không có table_name cho docfile_id: ' . $variable->docfile_id], 400);
+            }
+
+            // Sửa: Lưu ánh xạ và cập nhật doc_name
+            $mapping = Mapping::updateOrCreate(
+                ['doc_variable_id' => $request->variable_id],
+                [
+                    'var_name' => $variable->var_name,
+                    'field' => $request->field,
+                    'table_name' => $request->table_name,
+                    'original_headers_id' => $request->sheet_id,
+                    'original_headers_index' => $request->column_index,
+                    'fields_mapping' => $variable->var_name . '&' . $request->field,
+                    'doc_name' => $docTableName // Sửa: Đảm bảo lưu doc_name
+                ]
+            );
+
+            // Sửa: Ghi log chi tiết để debug
+            Log::info('Ánh xạ thành công', [
+                'variable_id' => $request->variable_id,
+                'var_name' => $variable->var_name,
+                'field' => $request->field,
+                'table_name' => $request->table_name,
+                'doc_name' => $docTableName,
+                'mapping_id' => $mapping->id,
+                'doc_name_stored' => $mapping->fresh()->doc_name // Kiểm tra giá trị thực sự lưu trong DB
+            ]);
+
+            return response()->json([
+                'success' => 'Ánh xạ thành công cho ' . $variable->var_name . ', thuộc bảng ' . $docTableName,
+                'variable_id' => $request->variable_id,
+                'field' => $request->field,
+                'table_name' => $request->table_name,
+                'doc_name' => $docTableName // Sửa: Trả về doc_name
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Lỗi khi ánh xạ: ' . $e->getMessage(), [
+                'request' => $request->all(),
+                'variable_id' => $request->variable_id
+            ]);
+            return response()->json(['error' => 'Không thể ánh xạ: ' . $e->getMessage()], 500);
+        }
+    }
+    
 }
