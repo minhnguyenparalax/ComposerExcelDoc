@@ -15,6 +15,9 @@ class Mapping extends Model
         'original_headers_index',
         'field',
         'fields_mapping',
+        'primary_key', // Thêm: Để lưu primary_key
+        'doc_name'    // Thêm: Để lưu tên bảng động
+
     ];
 
     // Quan hệ với bảng doc_variables
