@@ -709,6 +709,68 @@
                     }
                 });
             });
+
+            // Sửa: Xử lý ánh xạ và hiển thị doc_name với debug chi tiết
+            $('.map-field').off('click').on('click', function(e) {
+                e.preventDefault();
+                var variableId = $(this).data('variable-id');
+                var varName = $(this).data('var-name');
+                var sheetId = $(this).data('sheet-id');
+                var tableName = $(this).data('table-name');
+                var columnIndex = $(this).data('column-index');
+                var columnName = $(this).data('column-name');
+
+                // Sửa: Debug dữ liệu gửi chi tiết
+                console.log('Gửi AJAX mapField:', {
+                    variable_id: variableId,
+                    var_name: varName,
+                    field: columnName,
+                    table_name: tableName,
+                    sheet_id: sheetId,
+                    column_index: columnIndex
+                });
+
+                $.ajax({
+                    url: '{{ route("excel_doc_mapping.mapField") }}',
+                    type: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                    },
+                    data: {
+                        variable_id: variableId,
+                        field: columnName,
+                        table_name: tableName,
+                        sheet_id: sheetId,
+                        column_index: columnIndex
+                    },
+                    success: function(response) {
+                        if (response.success) {
+                            // Sửa: Hiển thị thông báo với doc_name
+                            alert(response.success); // Ví dụ: "Ánh xạ thành công cho Tên DN SMEs, thuộc bảng doc_246_05_evaluate_the_quality_of_consulting_repaired"
+                            // Sửa: Debug response chi tiết với doc_name
+                            console.log('Response mapField:', {
+                                success: response.success,
+                                variable_id: response.variable_id,
+                                field: response.field,
+                                table_name: response.table_name,
+                                doc_name: response.doc_name
+                            });
+                            // Cập nhật giao diện
+                            var $variableItem = $('.variable-item').has('.mapping-icon[data-variable-id="' + variableId + '"]');
+                            $variableItem.find('.mapped-field').remove();
+                            $variableItem.find('.delete-mapping').remove();
+                            $variableItem.append('<span class="mapped-field text-success ms-2">&' + response.field + '</span>');
+                            $variableItem.append('<i class="fa-solid fa-trash delete-mapping ms-2" title="Xóa ánh xạ" data-variable-id="' + variableId + '"></i>');
+                        } else {
+                            alert(response.error || 'Lỗi khi ánh xạ.');
+                        }
+                    },
+                    error: function(xhr) {
+                        console.error('Lỗi khi ánh xạ:', xhr.responseJSON);
+                        alert(xhr.responseJSON?.error || 'Lỗi khi ánh xạ.');
+                    }
+                });
+            });
         
 
         </script>
