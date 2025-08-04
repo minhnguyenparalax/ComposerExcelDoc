@@ -40,4 +40,5 @@ Route::post('/mapping/check', [ExcelController::class, 'checkMapping'])->name('e
 // Thêm: Route để cập nhật primary_key
 Route::post('/excel/mapping/set-primary-key', [ExcelDocMappingController::class, 'setPrimaryKey'])->name('excel_doc_mapping.setPrimaryKey');
 
-//Thêm: Route
+// Thêm: Route cho ánh xạ và cập nhật doc_name
+Route::post('/excel/mapping/map-field', [ExcelDocMappingController::class, 'mapField'])->name('excel_doc_mapping.mapField');
