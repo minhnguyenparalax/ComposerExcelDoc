@@ -150,7 +150,7 @@ class DataSyncController extends Controller
             //DB::table($docTableName)->truncate();
 
             // Chèn bản ghi mới vào bảng Word với giá trị từ Excel
-            // Chèn bản ghi mới, bỏ truncate
+            // Chèn bản ghi mới, bỏ truncate  
             foreach ($values as $value) {
                 try {
                     DB::table($docTableName)->insert([
