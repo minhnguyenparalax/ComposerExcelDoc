@@ -5,6 +5,7 @@ use App\Http\Controllers\DocController;
 use App\Http\Controllers\ExcelDocMappingController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\DataSyncController;
+use App\Http\Controllers\MappingController;
 
 
 //Route Đọc Excel 
@@ -47,3 +48,6 @@ Route::post('/excel/mapping/map-field', [ExcelDocMappingController::class, 'mapF
 
 // Thêm: Route cho đồng bộ dữ liệu
 Route::post('/data/sync', [DataSyncController::class, 'syncData'])->name('data.sync');
+
+Route::put('/mappings/{id}/primary-key', [MappingController::class, 'updatePrimaryKey']);
+Route::delete('/mappings/{id}', [MappingController::class, 'destroy']);
