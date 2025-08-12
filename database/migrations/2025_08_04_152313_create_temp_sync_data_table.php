@@ -13,10 +13,13 @@ class CreateTempSyncDataTable extends Migration
             $table->unsignedBigInteger('variable_id');
             $table->string('excel_table_name');
             $table->string('field');
-            $table->text('values')->nullable(); // Lưu mảng giá trị dưới dạng JSON
+            $table->text('values')->nullable();
             $table->string('doc_table_name');
             $table->string('var_name_column');
             $table->timestamps();
+
+            // Khóa ngoại liên kết với doc_variables
+            $table->foreign('variable_id')->references('id')->on('doc_variables')->onDelete('cascade');
         });
     }
 

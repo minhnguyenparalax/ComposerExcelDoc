@@ -177,49 +177,43 @@ class ExcelDocMappingController extends Controller
     public function setPrimaryKey(Request $request)
     {
         $request->validate([
-            'variable_id' => 'required|exists:doc_variables,id',
-            'primary_key' => 'nullable|in:1' // Chỉ chấp nhận "1" hoặc NULL
+            'variable_id' => 'required|exists:mappings,doc_variable_id',
+            'primary_key' => 'nullable|in:1'
         ]);
 
-        DB::beginTransaction();
         try {
-            $mapping = Mapping::where('doc_variable_id', $request->variable_id)->first();
-            if (!$mapping) {
-                return response()->json(['error' => 'Không tìm thấy ánh xạ cho variable_id: ' . $request->variable_id], 404);
-            }
-            // Ghi log trước khi cập nhật
-            Log::info('Trước khi cập nhật primary_key', [
-                'variable_id' => $request->variable_id,
-                'var_name' => $mapping->var_name,
-                'current_primary_key' => $mapping->primary_key,
-                'new_primary_key' => $request->primary_key
-            ]);
-            
-            // Cập nhật primary_key bằng save()
-            $mapping->primary_key = $request->primary_key;
+            DB::beginTransaction();
+
+            $mapping = Mapping::where('doc_variable_id', $request->variable_id)->firstOrFail();
+            $oldPrimaryKey = $mapping->primary_key;
+
+            $mapping->primary_key = $request->input('primary_key');
             $mapping->save();
 
-            // Ghi log sau khi cập nhật
-            Log::info('Sau khi cập nhật primary_key', [
-                'variable_id' => $request->variable_id,
-                'var_name' => $mapping->var_name,
-                'updated_primary_key' => $mapping->primary_key
-            ]);
-            
+            if ($oldPrimaryKey === '1' && is_null($mapping->primary_key)) {
+                Log::info('Gọi clearRelatedData do primary_key đổi thành NULL', [
+                    'doc_variable_id' => $mapping->doc_variable_id
+                ]);
+                TempSyncData::clearRelatedData($mapping->doc_variable_id);
+            }
+
             DB::commit();
-            // Sửa: Trả về thông báo tùy theo primary_key
-            return response()->json([
-                'success' => $request->primary_key === '1' 
-                    ? 'Đã cập nhật primary key cho ' . $mapping->var_name 
-                    : 'Bạn đã bỏ tích primary_key của ' . $mapping->var_name,
-                'variable_id' => $request->variable_id,
-                'primary_key' => $mapping->primary_key,
-                'var_name' => $mapping->var_name
+
+            Log::info('Cập nhật primary_key thành công', [
+                'doc_variable_id' => $mapping->doc_variable_id,
+                'primary_key' => $mapping->primary_key
             ]);
+
+            return response()->json(['success' => 'Cập nhật primary_key thành công']);
         } catch (\Exception $e) {
-            DB::rollBack();
-            Log::error('Lỗi khi cập nhật primary_key: ' . $e->getMessage(), ['request' => $request->all()]);
-            return response()->json(['error' => 'Không thể cập nhật primary key: ' . $e->getMessage()], 500);
+            if (DB::transactionLevel() > 0) {
+                DB::rollBack();
+            }
+            Log::error('Lỗi cập nhật primary_key: ' . $e->getMessage(), [
+                'variable_id' => $request->variable_id,
+                'trace' => $e->getTraceAsString()
+            ]);
+            return response()->json(['error' => 'Lỗi cập nhật primary_key: ' . $e->getMessage()], 500);
         }
     }
 

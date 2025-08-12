@@ -848,6 +848,22 @@
                                 if (isChecked === '1') {
                                     console.log('Gọi syncData vì primary_key = 1');
                                     syncData(variableId);
+                                } else {
+                                    console.log('primary_key = null, kiểm tra xóa dữ liệu');
+                                    // Gọi API để kiểm tra dữ liệu đã xóa
+                                    $.ajax({
+                                        url: '{{ route("data.sync") }}',
+                                        type: 'POST',
+                                        headers: {
+                                            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                                        },
+                                        data: {
+                                            variable_id: variableId
+                                        },
+                                        success: function(response) {
+                                            console.log('Kiểm tra xóa dữ liệu:', response);
+                                        }
+                                    });
                                 }
                             } else {
                                 console.error('Lỗi từ server:', response.error);
