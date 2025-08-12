@@ -49,5 +49,5 @@ Route::post('/excel/mapping/map-field', [ExcelDocMappingController::class, 'mapF
 // Thêm: Route cho đồng bộ dữ liệu
 Route::post('/data/sync', [DataSyncController::class, 'syncData'])->name('data.sync');
 
-Route::put('/mappings/{id}/primary-key', [MappingController::class, 'updatePrimaryKey']);
-Route::delete('/mappings/{id}', [MappingController::class, 'destroy']);
+//Route::put('/mappings/{id}/primary-key', [MappingController::class, 'updatePrimaryKey']);
+//Route::delete('/mappings/{id}', [MappingController::class, 'destroy']);
