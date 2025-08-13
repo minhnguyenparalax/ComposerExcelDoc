@@ -2,23 +2,14 @@
 
 namespace App\Providers;
 
+use App\Models\Mapping;
+use App\Observers\MappingObserver;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
 {
-    /**
-     * Register any application services.
-     */
-    public function register(): void
+    public function boot()
     {
-        //
-    }
-
-    /**
-     * Bootstrap any application services.
-     */
-    public function boot(): void
-    {
-        //
+        Mapping::observe(MappingObserver::class);
     }
 }

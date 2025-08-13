@@ -1,10 +1,12 @@
+```blade
 <!DOCTYPE html>
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Đọc File Excel và Word</title>
+    <title>Quản lý file Word và Excel</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <style>
         .file-column {
             display: flex;
@@ -51,7 +53,82 @@
         .table-bordered {
             border: 1px solid #dee2e6;
             border-radius: 6px;
-            overflow: hidden;
+            overflow: 
+        }
+        .variable-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .variable-item i {
+            font-size: 14px;
+            color: #0d6efd;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .variable-item i:hover {
+            color: #00f6e2ff;
+            text-shadow: 0 0 8px rgba(255, 202, 40, 0.8);
+        }
+        .variable-dropdown {
+            max-height: 300px;
+            overflow-y: auto;
+            min-width: 300px;
+            max-width: 600px;
+            background: #fff;
+            border: 1px solid #e0e0e0;
+            border-radius: 4px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+            padding: 8px;
+            position: absolute;
+            z-index: 1000;
+            display: none;
+        }
+        .variable-dropdown.show {
+            display: block;
+        }
+        .variable-dropdown h6 {
+            font-size: 13px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 5px;
+        }
+        .variable-dropdown ul {
+            padding-left: 15px;
+            margin-bottom: 0;
+        }
+        .variable-dropdown li {
+            font-size: 12px;
+            color: #555;
+        }
+        .row + .row {
+            margin-top: 1rem;
+        }
+        .card.mb-3 {
+            margin-bottom: 1rem !important;
+        }
+
+
+        /* Thêm: Hiệu ứng hover cho icon delete-sheet */
+        .delete-sheet {
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .delete-sheet:hover {
+            color: red; /* Đổi màu thành đỏ khi hover */
+            transform: scale(1.2); /* Phóng to nhẹ */
+            box-shadow: 0 0 5px rgba(0, 0, 0, 0.3); /* Thêm bóng nhẹ */
+        }
+
+        /* Thêm: Căn chỉnh checkbox trong Biến đã trích xuất */
+        .variable-item {
+            display: flex;
+            align-items: center;
+        }
+
+        /*Thêm: Nút checkbox */
+        .variable-item input[type="checkbox"] {
+            margin-right: 8px;
         }
     </style>
 </head>
@@ -74,9 +151,8 @@
         @endif
 
         <div class="row">
-            <!-- Danh sách Excel -->
             <div class="col-md-6">
-                <div class="card mb-4">
+                <div class="card mb-3">
                     <div class="card-header">Đọc File Excel</div>
                     <div class="card-body">
                         <form action="{{ route('excel.addExcel') }}" method="POST">
@@ -133,45 +209,76 @@
                 </div>
             </div>
 
-            <!-- Danh sách Doc -->
             <div class="col-md-6">
-                <div class="card mb-4">
-                    <div class="card-header">Đọc File Doc</div>
+                <div class="card mb-3">
+                    <div class="card-header">Thêm File Word</div>
                     <div class="card-body">
                         <form action="{{ route('doc.addDoc') }}" method="POST">
                             @csrf
                             <div class="mb-3">
-                                <label for="doc_file_path" class="form-label">Nhập Đường Dẫn File Doc (.doc hoặc .docx)</label>
-                                <input type="text" class="form-control" id="doc_file_path" name="file_path" placeholder="Đường dẫn có thể có hoặc không có dấu ngoặc kép">
+                                <label for="file_path" class="form-label">Nhập Đường Dẫn File Word (.doc hoặc .docx)</label>
+                                <input type="text" class="form-control" id="file_path" name="file_path" placeholder="Đường dẫn có thể có hoặc không có dấu ngoặc kép" required>
                             </div>
-                            <button type="submit" class="btn btn-primary">Thêm Doc</button>
+                            <button type="submit" class="btn btn-primary">Thêm File Word</button>
                         </form>
+                    </div>
+                </div>
 
+                <div class="card mb-3">
+                    <div class="card-header">Danh sách file Word</div>
+                    <div class="card-body">
                         @if ($docFiles->isNotEmpty())
-                            <h5 class="mt-4">Danh Sách Doc</h5>
                             <table class="table table-bordered">
                                 <thead>
                                     <tr>
-                                        <th>File</th>
-                                        <th>Hành động</th>
+                                        <th>File Name</th>
+                                        <th>Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     @foreach ($docFiles as $doc)
                                         <tr>
-                                            <td class="file-column">
-                                                <a href="#" class="btn btn-sm btn-info view-doc" data-doc-id="{{ $doc->id }}" data-doc-name="{{ $doc->name }}" data-bs-toggle="modal" data-bs-target="#docModal">
-                                                    Xem Doc
-                                                </a>
-                                                <a href="{{ route('doc.selectDoc', ['docId' => $doc->id]) }}" class="btn btn-sm btn-success">
-                                                    Chọn Doc
-                                                </a>
-                                                <span class="doc-name">
-                                                    {{ $doc->name ?: '[Tên file không xác định]' }}
-                                                </span>
-                                            </td>
+                                            <td>{{ $doc->name }}</td>
                                             <td>
-                                                <form action="{{ route('doc.removeDoc') }}" method="POST">
+                                                @if ($doc->is_selected)
+                                                    <!-- Phần Biến đã trích xuất -->
+                                                    <div>
+                                                        <strong>Biến đã trích xuất:</strong>
+                                                        @if ($doc->variables->count())
+                                                            <ul style="margin-bottom:0;">
+                                                                @foreach ($doc->variables as $variable)
+                                                                    <li class="variable-item dropdown">
+                                                                        <!-- Thêm: Checkbox để đánh dấu primary_key, checked nếu primary_key = "1" -->
+                                                                        @php
+                                                                            // Sửa: Định nghĩa $mapping trước để tránh lỗi Undefined variable
+                                                                            $mapping = \App\Models\Mapping::where('doc_variable_id', $variable->id)->first();
+                                                                        @endphp
+                                                                        <input type="checkbox" class="primary-key-checkbox" data-variable-id="{{ $variable->id }}"
+                                                                            @if ($mapping && $mapping->primary_key === '1') checked @endif
+                                                                        >
+                                                                        <!-- Sửa: Hiển thị var_name và field ánh xạ với định dạng giống JavaScript -->
+                                                                        {{ $variable->var_name }}
+                                                                        @php
+                                                                            // Sửa: Sử dụng $mapping đã định nghĩa để hiển thị field và nút xóa
+                                                                            if ($mapping && $mapping->field) {
+                                                                                echo '<span class="mapped-field text-success ms-2">&' . htmlspecialchars($mapping->field, ENT_QUOTES, 'UTF-8') . '</span>';
+                                                                                echo '<i class="fa-solid fa-trash delete-mapping ms-2" title="Xóa ánh xạ" data-variable-id="' . $variable->id . '"></i>';
+                                                                            }
+                                                                        @endphp
+                                                                        <i class="fa-solid fa-link mapping-icon" title="Ánh xạ variable và field" data-variable-id="{{ $variable->id }}" data-var-name="{{ $variable->var_name }}"></i>
+                                                                        <div class="dropdown-menu variable-dropdown" id="sheet-list-{{ $variable->id }}"></div>
+                                                                    </li>
+                                                                @endforeach
+                                                            </ul>
+                                                        @else
+                                                            <div class="text-muted">Không tìm thấy biến nào trong file này.</div>
+                                                        @endif
+                                                    </div>
+                                                @else
+                                                    <button class="btn btn-primary select-doc" data-doc-id="{{ $doc->id }}" style="font-weight:600;min-width:120px;">Trích xuất</button>
+                                                @endif
+                                                <a href="#" class="btn btn-sm btn-secondary view-doc" data-doc-id="{{ $doc->id }}" data-doc-name="{{ $doc->name }}" data-bs-toggle="modal" data-bs-target="#docModal">Xem nội dung</a>
+                                                <form action="{{ route('doc.removeDoc') }}" method="POST" style="display: inline-block;">
                                                     @csrf
                                                     <input type="hidden" name="doc_id" value="{{ $doc->id }}">
                                                     <button type="submit" class="btn btn-sm btn-danger">Xóa</button>
@@ -182,17 +289,16 @@
                                 </tbody>
                             </table>
                         @else
-                            <p>Không có file Doc nào.</p>
+                            <p>Chưa có file Word nào.</p>
                         @endif
                     </div>
                 </div>
             </div>
         </div>
-
+        <!--Danh sách sheet-->                                                                       
         <div class="row">
-            <!-- Danh sách Sheet đã được tạo bảng -->
             <div class="col-md-6">
-                <div class="card mb-4">
+                <div class="card mb-3">
                     <div class="card-header">Danh sách Sheet đã được tạo bảng</div>
                     <div class="card-body">
                         @if ($excelFilesWithCreatedSheets->isNotEmpty())
@@ -203,13 +309,19 @@
                                         <tr>
                                             <th>Sheet Name</th>
                                             <th>Table Name</th>
+                                            <!-- Thêm: Cột Action cho nút xóa -->
+                                            <th>Action</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         @foreach ($excelFile->sheets as $sheet)
-                                            <tr>
+                                            <tr data-sheet-id="{{ $sheet->id }}">
                                                 <td>{{ $sheet->name }}</td>
                                                 <td>{{ $sheet->table_name }}</td>
+                                                <!-- Thêm: Nút xóa để xóa sheet khỏi excel_sheets và mappings -->
+                                                <td>
+                                                    <i class="fa-solid fa-trash delete-sheet" title="Xóa sheet" data-sheet-id="{{ $sheet->id }}"></i>
+                                                </td>
                                             </tr>
                                         @endforeach
                                     </tbody>
@@ -221,82 +333,16 @@
                     </div>
                 </div>
             </div>
-
-            <!-- Danh sách biến của Doc -->
-            <div class="col-md-6">
-                <div class="card mb-4">
-                    <div class="card-header">Danh sách biến của Doc</div>
-                    <div class="card-body">
-                        @if ($selectedDocs->isNotEmpty())
-                            @foreach ($selectedDocs as $doc)
-                                <h6>File: {{ $doc->name }}</h6>
-                                <table class="table table-bordered">
-                                    <thead>
-                                        <tr>
-                                            <th>Tên biến</th>
-                                            <th>Tên bảng động</th>
-                                            <th>Trạng thái</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        @foreach ($doc->variables as $variable)
-                                            <tr>
-                                                <td>{{ $variable->var_name }}</td>
-                                                <td>{{ $variable->table_var_name ?? 'Chưa tạo' }}</td>
-                                                <td>{{ $variable->is_table_variable_created ? 'Đã tạo' : 'Chưa tạo' }}</td>
-                                            </tr>
-                                        @endforeach
-                                    </tbody>
-                                </table>
-                            @endforeach
-                        @else
-                            <p>Chưa có tài liệu nào được chọn.</p>
-                        @endif
-                    </div>
-                </div>
-            </div>
         </div>
 
-        <!-- Modal cho nội dung Word -->
-        <div class="modal fade" id="docModal" tabindex="-1" aria-labelledby="docModalLabel" aria-hidden="true">
-            <div class="modal-dialog modal-xl">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h5 class="modal-title" id="docModalLabel">Nội dung File Word</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                    </div>
-                    <div class="modal-body">
-                        <div id="docContent"></div>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
-                    </div>
-                </div>
-            </div>
-        </div>
+        <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+        @section('scripts')
+            <script src="{{ asset('js/data_sync.js') }}?v={{ time() }}"></script>
+        @endsection
 
-        <!-- Modal cho nội dung Excel -->
-        <div class="modal fade" id="excelModal" tabindex="-1" aria-labelledby="excelModalLabel" aria-hidden="true">
-            <div class="modal-dialog modal-xl">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h5 class="modal-title" id="excelModalLabel">Nội dung Sheet Excel</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                    </div>
-                    <div class="modal-body">
-                        <div id="excelContent"></div>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script>
+        <script>
         $(document).ready(function() {
             // Xử lý nút Xem cho Doc
             $('.view-doc').click(function(e) {
@@ -330,15 +376,553 @@
                     type: 'GET',
                     success: function(response) {
                         $('#excelContent').html(response);
-                        console.log('Excel content loaded:', response);
                     },
                     error: function(xhr) {
                         $('#excelContent').html('<p class="text-danger">Lỗi: ' + (xhr.responseJSON?.error || 'Không thể tải nội dung Excel.') + '</p>');
-                        console.error('Error loading Excel content:', xhr.responseText);
                     }
                 });
             });
+
+            // Hàm khởi tạo sự kiện cho các icon mapping
+            function initMappingIcons() {
+                console.log('Initializing mapping icons...'); // Debug
+                $('.mapping-icon').off('click').on('click', function() {
+                    var $icon = $(this);
+                    var variableId = $icon.data('variable-id');
+                    var varName = $icon.parent().text().trim().split(' ')[0]; // Lấy var_name từ text của li
+                    var $sheetList = $('#sheet-list-' + variableId);
+                    console.log('Clicked mapping icon with variableId:', variableId); // Debug
+
+                    // Toggle hiển thị/ẩn danh sách
+                    if ($sheetList.hasClass('show')) {
+                        $sheetList.removeClass('show').empty();
+                        return;
+                    }
+
+                    // Gọi AJAX để lấy danh sách fields từ các sheet Excel đã tạo bảng
+                    $.ajax({
+                        url: '{{ route("excel_doc_mapping.getFields", ":variableId") }}'.replace(':variableId', variableId),
+                        type: 'GET',
+                        success: function(response) {
+                            console.log('Response from getFields:', response); // Debug
+                            var content = '<h6 class="dropdown-header">Fields trích xuất:</h6>';
+                            if (response.sheets && response.sheets.length > 0) {
+                                response.sheets.forEach(function(sheet) {
+                                    content += '<div class="sheet-item">';
+                                    content += '<h6>File: ' + sheet.excel_file + ' - Sheet: ' + sheet.sheet_name + '</h6>';
+                                    content += '<ul>';
+                                    // Sửa: Duyệt original_headers thay vì columns, chỉ hiển thị field không rỗng
+                                    sheet.original_headers.forEach(function(header, index) {
+                                        if (header && header.trim() !== '') { // Chỉ thêm header không rỗng
+                                            content += '<li><a href="#" class="map-field" ' +
+                                                'data-variable-id="' + variableId + '" ' +
+                                                'data-var-name="' + varName + '" ' +
+                                                'data-sheet-id="' + sheet.sheet_id + '" ' +
+                                                'data-table-name="' + sheet.table_name + '" ' +
+                                                'data-column-index="' + index + '" ' +
+                                                'data-column-name="' + header + '">' + header + '</a></li>';
+                                        }
+                                    });
+                                    content += '</ul>';
+                                    content += '</div>';
+                                });
+                                var maxHeight = Math.min(100 + response.sheets.length * 80, 300);
+                                $sheetList.css('max-height', maxHeight + 'px');
+                            } else {
+                                content = '<p class="text-muted">Không có sheet nào được tạo bảng.</p>';
+                                $sheetList.css('max-height', '100px');
+                            }
+                            $sheetList.html(content).addClass('show');
+
+                            // Xử lý sự kiện click vào field để lưu ánh xạ
+                            $('.map-field').off('click').on('click', function(e) {
+                                e.preventDefault();
+                                var variableId = $(this).data('variable-id');
+                                var varName = $(this).data('var-name');
+                                var sheetId = $(this).data('sheet-id');
+                                var tableName = $(this).data('table-name');
+                                var columnIndex = $(this).data('column-index');
+                                var columnName = $(this).data('column-name');
+
+                                // Gửi yêu cầu AJAX để lưu ánh xạ vào bảng mappings
+                                $.ajax({
+                                    url: '{{ route("excel_doc_mapping.storeMapping") }}',
+                                    type: 'POST',
+                                    headers: {
+                                        'X-CSRF-TOKEN': '{{ csrf_token() }}' // Đảm bảo gửi CSRF token
+                                    },
+                                    data: {
+                                        variable_id: variableId,
+                                        var_name: varName,
+                                        excel_sheet_id: sheetId,
+                                        table_name: tableName,
+                                        original_headers_index: columnIndex,
+                                        field: columnName
+                                    },
+                                    success: function(response) {
+                                        alert(response.success || 'Ánh xạ thành công!');
+                                        $sheetList.removeClass('show').empty();
+                                        // Sửa: Xóa span và nút delete cũ, thêm span mới và nút delete để đồng bộ với HTML
+                                        $icon.parent().find('.mapped-field, .delete-mapping').remove(); // Xóa span ánh xạ và nút delete cũ nếu có
+                                        // Thêm field ánh xạ với định dạng & field (ví dụ: & Project code), mã hóa để an toàn
+                                        $icon.parent().append('<span class="mapped-field text-success ms-2">&' + $('<div/>').text(columnName).html() + '</span>');
+                                        // Thêm: Thêm nút delete để cho phép xóa ánh xạ
+                                        $icon.parent().append('<i class="fa-solid fa-trash delete-mapping ms-2" title="Xóa ánh xạ" data-variable-id="' + variableId + '"></i>');
+                                    },
+                                    error: function(xhr) {
+                                        console.error('Error in storeMapping:', xhr.responseJSON); // Debug
+                                        alert(xhr.responseJSON?.error || 'Lỗi khi lưu ánh xạ.');
+                                    }
+                                });
+                            });
+
+                            // Thêm: Xử lý sự kiện click vào nút delete để xóa ánh xạ
+                            $(document).on('click', '.delete-mapping', function(e) {
+                                e.preventDefault();
+                                var variableId = $(this).data('variable-id');
+                                var $parentLi = $(this).parent(); // Lưu tham chiếu đến li cha để cập nhật giao diện
+
+                                // Gửi yêu cầu AJAX để xóa ánh xạ khỏi bảng mappings
+                                $.ajax({
+                                    url: '{{ route("excel_doc_mapping.deleteMapping") }}', // Route mới để xóa ánh xạ
+                                    type: 'POST',
+                                    headers: {
+                                        'X-CSRF-TOKEN': '{{ csrf_token() }}' // Đảm bảo gửi CSRF token
+                                    },
+                                    data: {
+                                        variable_id: variableId
+                                    },
+                                    success: function(response) {
+                                        alert(response.success || 'Xóa ánh xạ thành công!');
+                                        // Xóa span ánh xạ và nút delete khỏi giao diện
+                                        $parentLi.find('.mapped-field, .delete-mapping').remove();
+                                    },
+                                    error: function(xhr) {
+                                        console.error('Error in deleteMapping:', xhr.responseJSON); // Debug
+                                        alert(xhr.responseJSON?.error || 'Lỗi khi xóa ánh xạ.');
+                                    }
+                                });
+                            });
+
+                            // Sửa: Xử lý sự kiện click vào nút delete để cập nhật is_table_created và reload trang
+                            $(document).on('click', '.delete-sheet', function(e) {
+                                e.preventDefault();
+                                var sheetId = $(this).data('sheet-id');
+                                var $row = $(this).closest('tr'); // Lưu tham chiếu đến hàng tr để xóa khỏi giao diện
+
+                                // Gửi yêu cầu AJAX để cập nhật is_table_created và xóa ánh xạ
+                                $.ajax({
+                                    url: '{{ route("excel.removeSheet") }}', // Route để cập nhật sheet
+                                    type: 'POST',
+                                    headers: {
+                                        'X-CSRF-TOKEN': '{{ csrf_token() }}' // Đảm bảo gửi CSRF token
+                                    },
+                                    data: {
+                                        sheet_id: sheetId
+                                    },
+                                    success: function(response) {
+                                        alert(response.success || 'Xóa bảng thành công!');
+                                        // Xóa hàng khỏi giao diện trước khi reload để giao diện mượt mà
+                                        $row.remove();
+                                        // Thêm: Reload trang để cập nhật toàn bộ giao diện
+                                        window.location.reload();
+                                    },
+                                    
+                                });
+                            });
+
+                        },
+                        error: function(xhr) {
+                            console.error('Error in getFields:', xhr.responseJSON); // Debug
+                            var errorMsg = xhr.responseJSON?.error || 'Không thể tải danh sách fields.';
+                            $sheetList.html('<p class="text-danger">' + errorMsg + '</p>').addClass('show');
+                        }
+
+                        
+
+
+
+                    });
+
+                    
+                });
+            }
+
+            // Xử lý nút Chọn Doc
+            $(document).on('click', '.select-doc', function(e) {
+                e.preventDefault();
+                var docId = $(this).data('doc-id');
+                var $button = $(this);
+                $button.prop('disabled', true).text('Đang trích xuất...');
+
+                $.ajax({
+                    url: '{{ route("doc.selectDoc", ":docId") }}'.replace(':docId', docId),
+                    type: 'GET',
+                    success: function(response) {
+                        console.log('Response from selectDoc:', response); // Debug
+                        // Reload lần 1 để hiển thị thông báo và khối biến
+                        window.location.reload();
+                        // Reload lần 2 sau 1 giây để hiển thị nút mapping
+                        setTimeout(function() {
+                            console.log('Triggering second reload...'); // Debug
+                            window.location.reload();
+                        }, 1000);
+                    },
+                    error: function(xhr) {
+                        console.error('Error in selectDoc:', xhr.responseJSON); // Debug
+                        $button.prop('disabled', false).text('Trích xuất');
+                        var alert = '<div class="alert alert-danger alert-dismissible fade show" role="alert">' +
+                                    '<h5>Lỗi</h5><p>' + (xhr.responseJSON?.error || 'Không thể trích xuất biến.') + '</p>' +
+                                    '<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button></div>';
+                        $('.container.mt-4').prepend(alert);
+                    }
+                });
+            });
+
+
+            // Thêm: Xử lý sự kiện click vào nút delete để xóa sheet
+            $(document).on('click', '.delete-sheet', function(e) {
+                e.preventDefault(); 
+                var sheetId = $(this).data('sheet-id');
+                var $row = $(this).closest('tr'); // Lưu tham chiếu đến hàng tr để xóa khỏi giao diện
+
+            // Gửi yêu cầu AJAX để xóa sheet khỏi bảng excel_sheets và các ánh xạ liên quan
+            $.ajax({
+                url: '{{ route("excel.removeSheet") }}', // Route mới để xóa sheet
+                type: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}' // Đảm bảo gửi CSRF token
+                },
+                data: {
+                    sheet_id: sheetId
+                },
+                success: function(response) {
+                    alert(response.success || 'Xóa sheet thành công!');
+                    // Xóa hàng khỏi giao diện
+                    $row.remove();
+                    // Thêm: Cập nhật lại giao diện Biến đã trích xuất để xóa các ánh xạ liên quan
+                    $('.variable-item').each(function() {
+                        var $li = $(this);
+                        var variableId = $li.find('.mapping-icon').data('variable-id');
+                        $.ajax({
+                            url: '{{ route("excel_doc_mapping.checkMapping") }}', // Route mới để kiểm tra ánh xạ
+                            type: 'POST',
+                            headers: {
+                                'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                            },
+                            data: {
+                                variable_id: variableId
+                            },
+                            success: function(response) {
+                                if (!response.exists) {
+                                    $li.find('.mapped-field, .delete-mapping').remove();
+                                }
+                            },
+                            error: function(xhr) {
+                                console.error('Error in checkMapping:', xhr.responseJSON);
+                            }
+                        });
+                    });
+                },
+                error: function(xhr) {
+                    console.error('Error in deleteSheet:', xhr.responseJSON); // Debug
+                    alert(xhr.responseJSON?.error || 'Lỗi khi xóa sheet.');
+                }
+            });
         });
-    </script>
+
+            
+            // Khởi tạo sự kiện cho các icon mapping khi tải trang
+            initMappingIcons();
+
+            // Đóng dropdown khi click ra ngoài
+            $(document).on('click', function(e) {
+                if (!$(e.target).closest('.mapping-icon, .variable-dropdown').length) {
+                    $('.variable-dropdown.show').removeClass('show').empty();
+                }
+            });
+        });
+
+            // Sửa: Xử lý sự kiện change của checkbox để cập nhật primary_key
+            $(document).on('change', '.primary-key-checkbox', function() {
+                var variableId = $(this).data('variable-id');
+                var isChecked = $(this).is(':checked');
+                var primaryKeyValue = isChecked ? '1' : null; // Đảm bảo gửi "1" hoặc null
+                // Sửa: Debug dữ liệu gửi chi tiết
+                console.log('Gửi AJAX setPrimaryKey:', {
+                    variable_id: variableId,
+                    primary_key: primaryKeyValue,
+                    is_checked: isChecked
+                });
+                
+                // Gửi AJAX để cập nhật primary_key trong bảng mappings
+                $.ajax({
+                    url: '{{ route("excel_doc_mapping.setPrimaryKey") }}',
+                    type: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}' // Đảm bảo gửi CSRF token
+                    },
+                    data: {
+                        variable_id: variableId,
+                        primary_key: primaryKeyValue // Tích: "1", bỏ tích: null
+                    },
+                    success: function(response) {
+                        // Sửa: Hiển thị thông báo chi tiết với var_name
+                        if (response.success) {
+                            alert(response.success); // Ví dụ: "Đã cập nhật primary key cho Tên DN SMEs"
+                            // Sửa: Debug response chi tiết
+                            console.log('Response setPrimaryKey:', {
+                                success: response.success,
+                                variable_id: response.variable_id,
+                                primary_key: response.primary_key,
+                                var_name: response.var_name
+                            });
+                            // Cập nhật trạng thái checkbox của tất cả var_name
+                            $('.primary-key-checkbox').each(function() {
+                                var $checkbox = $(this);
+                                var varId = $checkbox.data('variable-id');
+                                $.ajax({
+                                    url: '{{ route("excel_doc_mapping.checkMapping") }}',
+                                    type: 'POST',
+                                    headers: {
+                                        'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                                    },
+                                    data: {
+                                        variable_id: varId
+                                    },
+                                    success: function(response) {
+                                        // Cập nhật trạng thái checked dựa trên primary_key
+                                        $checkbox.prop('checked', response.mapping && response.mapping.primary_key === '1');
+                                        // Sửa: Debug trạng thái checkbox
+                                        console.log('Checkbox varId:', varId, 'checked:', $checkbox.prop('checked'), 'primary_key:', response.mapping?.primary_key);
+                                    },
+                                    error: function(xhr) {
+                                        console.error('Lỗi khi kiểm tra ánh xạ:', xhr.responseJSON);
+                                    }
+                                });
+                            });
+                        } else {
+                            alert(response.error || 'Lỗi khi cập nhật primary key.');
+                        }
+                    },
+                    error: function(xhr) {
+                        console.error('Lỗi khi cập nhật primary_key:', xhr.responseJSON);
+                        alert(xhr.responseJSON?.error || 'Lỗi khi cập nhật primary key.');
+                    }
+                });
+            });
+
+            // Sửa: Xử lý ánh xạ và hiển thị doc_name với debug chi tiết
+            $('.map-field').off('click').on('click', function(e) {
+                e.preventDefault();
+                var variableId = $(this).data('variable-id');
+                var varName = $(this).data('var-name');
+                var sheetId = $(this).data('sheet-id');
+                var tableName = $(this).data('table-name');
+                var columnIndex = $(this).data('column-index');
+                var columnName = $(this).data('column-name');
+
+                // Sửa: Debug dữ liệu gửi chi tiết
+                console.log('Gửi AJAX mapField:', {
+                    variable_id: variableId,
+                    var_name: varName,
+                    field: columnName,
+                    table_name: tableName,
+                    sheet_id: sheetId,
+                    column_index: columnIndex
+                });
+
+                $.ajax({
+                    url: '{{ route("excel_doc_mapping.mapField") }}',
+                    type: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                    },
+                    data: {
+                        variable_id: variableId,
+                        field: columnName,
+                        table_name: tableName,
+                        sheet_id: sheetId,
+                        column_index: columnIndex
+                    },
+                    success: function(response) {
+                        if (response.success) {
+                            // Sửa: Hiển thị thông báo với doc_name
+                            alert(response.success); // Ví dụ: "Ánh xạ thành công cho Tên DN SMEs, thuộc bảng doc_246_05_evaluate_the_quality_of_consulting_repaired"
+                            // Sửa: Debug response chi tiết với doc_name
+                            console.log('Response mapField:', {
+                                success: response.success,
+                                variable_id: response.variable_id,
+                                field: response.field,
+                                table_name: response.table_name,
+                                doc_name: response.doc_name
+                            });
+                            // Cập nhật giao diện
+                            var $variableItem = $('.variable-item').has('.mapping-icon[data-variable-id="' + variableId + '"]');
+                            $variableItem.find('.mapped-field').remove();
+                            $variableItem.find('.delete-mapping').remove();
+                            $variableItem.append('<span class="mapped-field text-success ms-2">&' + response.field + '</span>');
+                            $variableItem.append('<i class="fa-solid fa-trash delete-mapping ms-2" title="Xóa ánh xạ" data-variable-id="' + variableId + '"></i>');
+                        } else {
+                            alert(response.error || 'Lỗi khi ánh xạ.');
+                        }
+                    },
+                    error: function(xhr) {
+                        console.error('Lỗi khi ánh xạ:', xhr.responseJSON);
+                        alert(xhr.responseJSON?.error || 'Lỗi khi ánh xạ.');
+                    }
+                });
+            });
+            //Đồng bộ Data của biến Word và field Excel
+            $(document).ready(function() {
+                function syncData(variableId) {
+                    console.log('Bắt đầu syncData:', { variable_id: variableId });
+
+                    $.ajax({
+                        url: '{{ route("data.sync") }}',
+                        type: 'POST',
+                        headers: {
+                            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                        },
+                        data: {
+                            variable_id: variableId
+                        },
+                        success: function(response) {
+                            console.log('Response syncData:', {
+                                success: response.success,
+                                variable_id: response.variable_id,
+                                var_name: response.var_name,
+                                doc_name: response.doc_name,
+                                table_name: response.table_name,
+                                error: response.error
+                            });
+                            if (response.success) {
+                                alert(response.success);
+                            } else {
+                                console.error('Lỗi từ server:', response.error);
+                                alert(response.error || 'Lỗi khi đồng bộ dữ liệu.');
+                            }
+                        },
+                        error: function(xhr) {
+                            console.error('Lỗi AJAX syncData:', {
+                                status: xhr.status,
+                                response: xhr.responseJSON,
+                                message: xhr.responseJSON?.error
+                            });
+                            alert(xhr.responseJSON?.error || 'Lỗi khi đồng bộ dữ liệu.');
+                        }
+                    });
+                }
+
+                $('.primary-key-checkbox').off('change').on('change', function(e) {
+                    e.preventDefault();
+                    var variableId = $(this).data('variable-id');
+                    var isChecked = $(this).is(':checked') ? '1' : null;
+
+                    console.log('Gửi AJAX setPrimaryKey:', {
+                        variable_id: variableId,
+                        primary_key: isChecked
+                    });
+
+                    $.ajax({
+                        url: '{{ route("excel_doc_mapping.setPrimaryKey") }}',
+                        type: 'POST',
+                        headers: {
+                            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                        },
+                        data: {
+                            variable_id: variableId,
+                            primary_key: isChecked
+                        },
+                        success: function(response) {
+                            console.log('Response setPrimaryKey:', {
+                                success: response.success,
+                                variable_id: response.variable_id,
+                                primary_key: response.primary_key,
+                                var_name: response.var_name,
+                                doc_name: response.doc_name,
+                                error: response.error
+                            });
+                            if (response.success) {
+                                alert(response.success);
+                                if (isChecked === '1') {
+                                    console.log('Gọi syncData vì primary_key = 1');
+                                    syncData(variableId);
+                                } else {
+                                    console.log('primary_key = null, kiểm tra xóa dữ liệu');
+                                    // Gọi API để kiểm tra dữ liệu đã xóa
+                                    $.ajax({
+                                        url: '{{ route("data.sync") }}',
+                                        type: 'POST',
+                                        headers: {
+                                            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                                        },
+                                        data: {
+                                            variable_id: variableId
+                                        },
+                                        success: function(response) {
+                                            console.log('Kiểm tra xóa dữ liệu:', response);
+                                        }
+                                    });
+                                }
+                            } else {
+                                console.error('Lỗi từ server:', response.error);
+                                alert(response.error || 'Lỗi khi cập nhật primary key.');
+                            }
+                        },
+                        error: function(xhr) {
+                            console.error('Lỗi AJAX setPrimaryKey:', {
+                                status: xhr.status,
+                                response: xhr.responseJSON,
+                                message: xhr.responseJSON?.error
+                            });
+                            alert(xhr.responseJSON?.error || 'Lỗi khi cập nhật primary key.');
+                        }
+                    });
+                });
+            });
+        
+
+        </script>
+
+
+
+
+
+
+        <!-- Modal xem nội dung file Word -->
+        <div class="modal fade" id="docModal" tabindex="-1" aria-labelledby="docModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="docModalLabel">Nội dung File Word</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body" id="docContent">
+                        <div class="text-center text-muted">Đang tải nội dung...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal cho nội dung Excel -->
+        <div class="modal fade" id="excelModal" tabindex="-1" aria-labelledby="excelModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-xl">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="excelModalLabel">Nội dung Sheet Excel</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div id="excelContent"></div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 </body>
 </html>
+```
